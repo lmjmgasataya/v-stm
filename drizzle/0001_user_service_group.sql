@@ -1,0 +1,1 @@
+ALTER TABLE "stm_users" ADD COLUMN "service_group" text;

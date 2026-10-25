@@ -1,0 +1,1 @@
+ALTER TABLE "stm_members" ADD COLUMN "nickname" text;

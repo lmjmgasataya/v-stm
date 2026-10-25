@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --color-stm-navy: #1c3f8b;
+  --color-stm-accent: #e4572e;
+  --color-stm-green: #2f9e44;
+  --color-stm-amber: #f0a202;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: #f7f8fb;
+}
+
+button {
+  cursor: pointer;
+}
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateX(1rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
+@keyframes toast-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(1rem);
+    opacity: 0;
+  }
+}
+
+.animate-toast-out {
+  animation: toast-out 0.25s ease-in forwards;
+}
+
+@keyframes toast-countdown {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-toast-countdown {
+  animation: toast-countdown 10s linear forwards;
+}
