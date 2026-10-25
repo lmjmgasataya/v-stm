@@ -1,9 +1,10 @@
-import { and, arrayContains, asc, count, desc, eq, gte, inArray, lte, type SQL } from "drizzle-orm";
+import { and, arrayContains, asc, count, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns, eventCheckIns, events, members } from "@/db/schema";
 
-// Every query takes `services` — the signed-in user's services (Viewer.services) — so
-// service-group users only ever count and see their own services' check-ins.
+// Service queries take `services` — the signed-in user's services (Viewer.services) — so
+// service-group users only count and see their own services' check-ins. Event check-ins
+// aren't limited by service group: every staff user sees an event's full attendance.
 
 export interface AttendanceRow {
   memberId: number;
@@ -48,18 +49,9 @@ function ministryScope(ministry: string | undefined) {
   return ministry ? arrayContains(members.ministries, [ministry]) : undefined;
 }
 
-/**
- * What a viewer may count: service check-ins limited to their services, event check-ins
- * limited to their members (memberScope). Built by the attendance page from the Viewer.
- */
-export interface AttendanceScope {
-  services: readonly string[];
-  members: SQL | undefined;
-}
-
 /** Most recent dates with any service or event check-ins (of `ministry`, when given), newest first. */
 export async function getRecentServiceDates(
-  scope: AttendanceScope,
+  services: readonly string[],
   ministry?: string,
   limit = 8
 ): Promise<{ date: string; total: number }[]> {
@@ -68,7 +60,7 @@ export async function getRecentServiceDates(
       .select({ date: checkIns.serviceDate, total: count() })
       .from(checkIns)
       .innerJoin(members, eq(checkIns.memberId, members.id))
-      .where(and(inArray(checkIns.service, [...scope.services]), ministryScope(ministry)))
+      .where(and(inArray(checkIns.service, [...services]), ministryScope(ministry)))
       .groupBy(checkIns.serviceDate)
       .orderBy(desc(checkIns.serviceDate))
       .limit(limit),
@@ -77,7 +69,7 @@ export async function getRecentServiceDates(
       .from(eventCheckIns)
       .innerJoin(events, eq(eventCheckIns.eventId, events.id))
       .innerJoin(members, eq(eventCheckIns.memberId, members.id))
-      .where(and(scope.members, ministryScope(ministry)))
+      .where(ministryScope(ministry))
       .groupBy(events.eventDate)
       .orderBy(desc(events.eventDate))
       .limit(limit),
@@ -95,7 +87,7 @@ export async function getRecentServiceDates(
 export async function getCheckInCountsByDate(
   from: string,
   to: string,
-  scope: AttendanceScope,
+  services: readonly string[],
   ministry?: string
 ): Promise<Map<string, number>> {
   const [serviceRows, eventRows] = await Promise.all([
@@ -107,7 +99,7 @@ export async function getCheckInCountsByDate(
         and(
           gte(checkIns.serviceDate, from),
           lte(checkIns.serviceDate, to),
-          inArray(checkIns.service, [...scope.services]),
+          inArray(checkIns.service, [...services]),
           ministryScope(ministry)
         )
       )
@@ -117,7 +109,7 @@ export async function getCheckInCountsByDate(
       .from(eventCheckIns)
       .innerJoin(events, eq(eventCheckIns.eventId, events.id))
       .innerJoin(members, eq(eventCheckIns.memberId, members.id))
-      .where(and(gte(events.eventDate, from), lte(events.eventDate, to), scope.members, ministryScope(ministry)))
+      .where(and(gte(events.eventDate, from), lte(events.eventDate, to), ministryScope(ministry)))
       .groupBy(events.eventDate),
   ]);
   return sumByDate([...serviceRows, ...eventRows]);
@@ -129,11 +121,8 @@ function sumByDate(rows: { date: string; total: number }[]): Map<string, number>
   return totals;
 }
 
-/** Each event on `date` (even with no check-ins) and who checked in to it, within the scope. */
-export async function getEventAttendance(
-  date: string,
-  scope: AttendanceScope
-): Promise<{ event: { id: number; name: string }; rows: AttendanceRow[] }[]> {
+/** Each event on `date` (even with no check-ins) and everyone who checked in to it. */
+export async function getEventAttendance(date: string): Promise<{ event: { id: number; name: string }; rows: AttendanceRow[] }[]> {
   const [dayEvents, rows] = await Promise.all([
     db.select({ id: events.id, name: events.name }).from(events).where(eq(events.eventDate, date)).orderBy(asc(events.name)),
     db
@@ -150,7 +139,7 @@ export async function getEventAttendance(
       .from(eventCheckIns)
       .innerJoin(events, eq(eventCheckIns.eventId, events.id))
       .innerJoin(members, eq(eventCheckIns.memberId, members.id))
-      .where(and(eq(events.eventDate, date), scope.members)),
+      .where(eq(events.eventDate, date)),
   ]);
   return dayEvents.map((event) => ({
     event,

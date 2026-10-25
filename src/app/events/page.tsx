@@ -6,7 +6,7 @@ import { primaryBtnCls } from "@/components/form";
 
 export default async function EventsPage() {
   const viewer = await requireViewer();
-  const { upcoming, past } = await getEventsWithCounts(viewer);
+  const { upcoming, past } = await getEventsWithCounts();
   const today = manilaDateString();
 
   return (

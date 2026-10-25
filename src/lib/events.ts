@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
-import { and, asc, count, desc, eq, gte, lt } from "drizzle-orm";
+import { asc, count, desc, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/db";
-import { eventCheckIns, events, members } from "@/db/schema";
-import { memberScope, type Viewer } from "@/lib/access";
+import { eventCheckIns, events } from "@/db/schema";
 import { manilaDateString } from "@/lib/date";
 
 export interface EventSummary {
@@ -10,12 +9,14 @@ export interface EventSummary {
   name: string;
   eventDate: string;
   notes: string | null;
-  /** Check-ins of members within the viewer's services. */
   checkedIn: number;
 }
 
-/** Upcoming (today onward, soonest first) and past (latest first) events with the viewer's check-in counts. */
-export async function getEventsWithCounts(viewer: Viewer): Promise<{ upcoming: EventSummary[]; past: EventSummary[] }> {
+/**
+ * Upcoming (today onward, soonest first) and past (latest first) events with check-in counts.
+ * Events aren't limited by service group: every staff user sees and checks in every member.
+ */
+export async function getEventsWithCounts(): Promise<{ upcoming: EventSummary[]; past: EventSummary[] }> {
   const today = manilaDateString();
   const columns = { id: events.id, name: events.name, eventDate: events.eventDate, notes: events.notes };
   const [upcoming, past, counts] = await Promise.all([
@@ -24,8 +25,6 @@ export async function getEventsWithCounts(viewer: Viewer): Promise<{ upcoming: E
     db
       .select({ eventId: eventCheckIns.eventId, total: count() })
       .from(eventCheckIns)
-      .innerJoin(members, eq(eventCheckIns.memberId, members.id))
-      .where(memberScope(viewer))
       .groupBy(eventCheckIns.eventId),
   ]);
   const byEvent = new Map(counts.map((c) => [c.eventId, c.total]));
@@ -50,11 +49,9 @@ export async function getEventOrNotFound(rawId: string) {
   return event;
 }
 
-/** Event check-ins of members within the viewer's services. */
-export async function getEventCheckIns(eventId: number, viewer: Viewer) {
+export async function getEventCheckIns(eventId: number) {
   return db
     .select({ memberId: eventCheckIns.memberId, checkedInAt: eventCheckIns.checkedInAt })
     .from(eventCheckIns)
-    .innerJoin(members, eq(eventCheckIns.memberId, members.id))
-    .where(and(eq(eventCheckIns.eventId, eventId), memberScope(viewer)));
+    .where(eq(eventCheckIns.eventId, eventId));
 }

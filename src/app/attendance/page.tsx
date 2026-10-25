@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { memberScope, requireViewer } from "@/lib/access";
+import { requireViewer } from "@/lib/access";
 import {
   getAttendanceByService,
   getCheckInCountsByDate,
@@ -56,12 +56,11 @@ export default async function AttendancePage({
   }
   const keep = href({}).replace(/^\/attendance\?date=[^&]*/, ""); // "&ministry=…&sort=…" for the calendar
 
-  const scope = { services: viewer.services, members: memberScope(viewer) };
   const [services, dayEvents, recentDates, calendarCounts] = await Promise.all([
     getAttendanceByService(date, viewer.services),
-    getEventAttendance(date, scope),
-    getRecentServiceDates(scope, ministry || undefined),
-    getCheckInCountsByDate(`${month}-01`, new Date(lastOfMonth).toISOString().slice(0, 10), scope, ministry || undefined),
+    getEventAttendance(date),
+    getRecentServiceDates(viewer.services, ministry || undefined),
+    getCheckInCountsByDate(`${month}-01`, new Date(lastOfMonth).toISOString().slice(0, 10), viewer.services, ministry || undefined),
   ]);
 
   // Totals and ministry counts cover the day's services and events together

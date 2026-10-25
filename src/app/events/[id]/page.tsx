@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { asc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import { members } from "@/db/schema";
-import { memberScope, requireViewer } from "@/lib/access";
+import { requireViewer } from "@/lib/access";
 import { formatDateString, manilaDateString } from "@/lib/date";
 import { getEventCheckIns, getEventOrNotFound } from "@/lib/events";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -14,10 +14,10 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   const viewer = await requireViewer();
   const event = await getEventOrNotFound((await params).id);
 
-  const checkIns = await getEventCheckIns(event.id, viewer);
+  const checkIns = await getEventCheckIns(event.id);
   const checkedInIds = checkIns.map((c) => c.memberId);
-  // Any active member within the viewer's services — events aren't tied to a service time —
-  // plus anyone already checked in (even if since made inactive), so the list matches the count
+  // Every active member from all services — events aren't tied to a service time or to the
+  // viewer's service group — plus anyone already checked in (even if since made inactive)
   const roster = await db
     .select({
       id: members.id,
@@ -31,12 +31,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
       ministries: members.ministries,
     })
     .from(members)
-    .where(
-      and(
-        checkedInIds.length ? or(eq(members.isActive, true), inArray(members.id, checkedInIds)) : eq(members.isActive, true),
-        memberScope(viewer)
-      )
-    )
+    .where(checkedInIds.length ? or(eq(members.isActive, true), inArray(members.id, checkedInIds)) : eq(members.isActive, true))
     .orderBy(asc(members.lastName), asc(members.firstName));
 
   const today = manilaDateString();
@@ -67,7 +62,6 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
       <EventCheckInWorkspace
         eventId={event.id}
-        scopeLabel={viewer.serviceGroup}
         roster={roster satisfies RosterMember[]}
         checkIns={checkIns.map((c) => ({ memberId: c.memberId, checkedInAt: c.checkedInAt.toISOString() }))}
       />

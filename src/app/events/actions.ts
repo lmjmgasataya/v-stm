@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { eventCheckIns, events, members } from "@/db/schema";
-import { memberScope, requireMemberManager, requireSuperAdmin, requireViewer, type Viewer } from "@/lib/access";
+import { requireMemberManager, requireSuperAdmin, requireViewer } from "@/lib/access";
 import { isDateString } from "@/lib/date";
 import { withToast } from "@/lib/toast";
 
@@ -73,19 +73,19 @@ export async function deleteEvent(eventId: number) {
 
 export type EventCheckInResult = { ok: true; checkedInAt: string } | { ok: false; error: string };
 
-/** The member must be active and within the viewer's services. */
-async function memberInScope(viewer: Viewer, memberId: number) {
+/** Any active member, from any service — events aren't limited by the viewer's service group. */
+async function isActiveMember(memberId: number) {
   const [member] = await db
     .select({ id: members.id })
     .from(members)
-    .where(and(eq(members.id, memberId), eq(members.isActive, true), memberScope(viewer)))
+    .where(and(eq(members.id, memberId), eq(members.isActive, true)))
     .limit(1);
   return !!member;
 }
 
 export async function checkInToEvent(eventId: number, memberId: number): Promise<EventCheckInResult> {
   const viewer = await requireViewer();
-  if (!(await memberInScope(viewer, memberId))) return { ok: false, error: "Member not found in your services." };
+  if (!(await isActiveMember(memberId))) return { ok: false, error: "Member not found or inactive." };
 
   const [event] = await db.select({ id: events.id }).from(events).where(eq(events.id, eventId)).limit(1);
   if (!event) return { ok: false, error: "This event no longer exists." };
@@ -103,15 +103,7 @@ export async function checkInToEvent(eventId: number, memberId: number): Promise
 }
 
 export async function undoEventCheckIn(eventId: number, memberId: number) {
-  const viewer = await requireViewer();
-  // Inactive members included: an undo should still work after someone is deactivated
-  const [member] = await db
-    .select({ id: members.id })
-    .from(members)
-    .where(and(eq(members.id, memberId), memberScope(viewer)))
-    .limit(1);
-  if (!member) return;
-
+  await requireViewer();
   await db.delete(eventCheckIns).where(and(eq(eventCheckIns.eventId, eventId), eq(eventCheckIns.memberId, memberId)));
   revalidateEvents();
 }

@@ -24,19 +24,17 @@ type OptimisticUpdate = { type: "add"; checkIn: EventCheckIn } | { type: "remove
 const REFRESH_INTERVAL_MS = 20_000;
 
 /**
- * Check-in for a custom event: any member (within the viewer's services), no service times.
+ * Check-in for a custom event: any active member from every service (even for service-group
+ * users), no service times.
  * Like the service check-in, the roster is preloaded for instant search but the not-yet
  * list stays hidden until someone searches or picks a ministry.
  */
 export function EventCheckInWorkspace({
   eventId,
-  scopeLabel,
   roster,
   checkIns,
 }: {
   eventId: number;
-  /** The viewer's service group, if any — only their members are listed. */
-  scopeLabel: string | null;
   roster: RosterMember[];
   checkIns: EventCheckIn[];
 }) {
@@ -115,7 +113,7 @@ export function EventCheckInWorkspace({
   if (roster.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center text-sm text-stone-500">
-        No active service team members{scopeLabel && ` in ${scopeLabel}`} yet.{" "}
+        No active service team members yet.{" "}
         <Link href="/members" className="text-stm-brand underline">
           Add some
         </Link>{" "}
@@ -127,18 +125,10 @@ export function EventCheckInWorkspace({
   return (
     <div className="flex flex-col gap-5">
       <div className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-4">
+        {/* Just the count — not everyone is expected at an event, so no total or progress bar */}
         <p className="text-3xl font-bold text-stm-brand">
-          {optimistic.length}{" "}
-          <span className="text-base font-medium text-stone-400">
-            checked in{scopeLabel && ` from ${scopeLabel}`} · {roster.length} member{roster.length === 1 ? "" : "s"}
-          </span>
+          {optimistic.length} <span className="text-base font-medium text-stone-400">checked in</span>
         </p>
-        <div className="mt-2 h-2 w-64 max-w-full rounded-full bg-stone-100 overflow-hidden">
-          <div
-            className="h-full bg-stm-green transition-all"
-            style={{ width: `${Math.min(100, (optimistic.length / roster.length) * 100)}%` }}
-          />
-        </div>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -165,7 +155,8 @@ export function EventCheckInWorkspace({
       </div>
 
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-2">Not yet checked in ({remaining})</h2>
+        {/* No "not yet (N)" count: not everyone is expected at an event */}
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-2">Check someone in</h2>
         {!browsing ? (
           <p className="rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-6 text-center text-sm text-stone-500">
             {remaining > 0 ? "Type a name above to find someone, or pick a ministry to list its members." : emptyNotYetMessage()}
