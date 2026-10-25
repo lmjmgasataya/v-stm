@@ -76,8 +76,8 @@ export const MINISTRY_ICONS: Record<Ministry, string> = {
   Admin: "📋",
   Usher: "🤝",
   Prayer: "🙏",
-  Production: "🎬",
-  Communication: "📣",
+  Production: "🎨",
+  Communication: "📷",
   Kids: "🧒",
 };
 

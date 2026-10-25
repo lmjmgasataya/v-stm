@@ -26,6 +26,7 @@ export function SortableTh({
   const params = new URLSearchParams(searchParams.toString());
   params.set("sort", column);
   params.set("dir", nextDir);
+  params.delete("page"); // re-sorting starts from the first page
 
   return (
     <th

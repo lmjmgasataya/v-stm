@@ -29,6 +29,7 @@ export function FilterSelect({
         const params = new URLSearchParams(searchParams.toString());
         if (e.target.value) params.set(param, e.target.value);
         else params.delete(param);
+        params.delete("page"); // a new filter starts from the first page
         router.replace(`${pathname}?${params.toString()}`);
       }}
       className="rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm shadow-xs transition focus:outline-none focus:ring-4 focus:ring-stm-brand/15 focus:border-stm-brand"
