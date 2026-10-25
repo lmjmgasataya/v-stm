@@ -1,7 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, countDistinct, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { members } from "@/db/schema";
+import { checkIns, members } from "@/db/schema";
 import { memberScope, type Viewer } from "@/lib/access";
+import { activeMemberCondition } from "@/lib/activity";
+import type { ActivityRule } from "@/lib/activity-rule";
 import { DISCIPLESHIP_JOURNEY_STEPS, GENDER_OPTIONS, LIFESTAGE_OPTIONS, MINISTRY_OPTIONS } from "@/lib/constants";
 
 export const NOT_SET = "Not set";
@@ -54,7 +56,11 @@ function tally(values: (string | null)[], options: readonly string[]): Count[] {
  * (e.g. one service group's) when given. A few hundred rows, so it's counted in JS rather
  * than one GROUP BY per breakdown.
  */
-export async function getDemographics(viewer: Viewer, services: readonly string[] | null): Promise<Demographics> {
+export async function getDemographics(
+  viewer: Viewer,
+  services: readonly string[] | null,
+  rule: ActivityRule
+): Promise<Demographics> {
   const rows = await db
     .select({
       gender: members.gender,
@@ -68,7 +74,7 @@ export async function getDemographics(viewer: Viewer, services: readonly string[
     })
     .from(members)
     .where(
-      and(eq(members.isActive, true), memberScope(viewer), services ? inArray(members.serviceAttending, [...services]) : undefined)
+      and(activeMemberCondition(rule), memberScope(viewer), services ? inArray(members.serviceAttending, [...services]) : undefined)
     );
 
   const ages = rows.map((r) => r.age).filter((a): a is number => a !== null);
@@ -103,4 +109,62 @@ export async function getDemographics(viewer: Viewer, services: readonly string[
       services ?? viewer.services
     ),
   };
+}
+
+export const NO_MINISTRY = "No ministry";
+
+export interface MinistryServiceTable {
+  services: readonly string[];
+  /** One row per ministry (plus "No ministry" if anyone has none); counts per service. */
+  rows: { ministry: string; counts: number[]; total: number }[];
+  /** Distinct STMs per service — not the column sum, since one person can be in several ministries. */
+  serviceTotals: number[];
+  /** Distinct STMs across every service that day. */
+  total: number;
+}
+
+/**
+ * STMs checked in on `date`, per ministry × service. A member in several ministries counts
+ * in each ministry row; row and column totals count distinct people, so someone who served
+ * both 2PM and 4PM is one person in the row total.
+ */
+export async function getMinistryServiceTable(date: string, services: readonly string[]): Promise<MinistryServiceTable> {
+  const rows = await db
+    .select({ memberId: checkIns.memberId, service: checkIns.service, ministries: members.ministries })
+    .from(checkIns)
+    .innerJoin(members, eq(checkIns.memberId, members.id))
+    .where(and(eq(checkIns.serviceDate, date), inArray(checkIns.service, [...services])));
+
+  const ministryNames = [...MINISTRY_OPTIONS, ...(rows.some((r) => r.ministries.length === 0) ? [NO_MINISTRY] : [])];
+  // ministry → service → member ids
+  const cells = new Map(ministryNames.map((m) => [m, new Map(services.map((s) => [s, new Set<number>()]))]));
+  const byService = new Map(services.map((s) => [s, new Set<number>()]));
+  for (const r of rows) {
+    byService.get(r.service)?.add(r.memberId);
+    for (const m of r.ministries.length ? r.ministries : [NO_MINISTRY]) cells.get(m)?.get(r.service)?.add(r.memberId);
+  }
+
+  return {
+    services,
+    rows: ministryNames.map((ministry) => {
+      const perService = services.map((s) => cells.get(ministry)!.get(s)!);
+      return {
+        ministry,
+        counts: perService.map((set) => set.size),
+        total: new Set(perService.flatMap((set) => [...set])).size,
+      };
+    }),
+    serviceTotals: services.map((s) => byService.get(s)!.size),
+    total: new Set(rows.map((r) => r.memberId)).size,
+  };
+}
+
+/** Dates with any check-ins to `services` (newest first) and how many STMs served — for the date picker. */
+export async function getServiceDates(services: readonly string[]): Promise<{ date: string; total: number }[]> {
+  return db
+    .select({ date: checkIns.serviceDate, total: countDistinct(checkIns.memberId) })
+    .from(checkIns)
+    .where(inArray(checkIns.service, [...services]))
+    .groupBy(checkIns.serviceDate)
+    .orderBy(desc(checkIns.serviceDate));
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { AttendanceIcon, CheckInIcon, EventsIcon, HomeIcon, MembersIcon, MoreIcon, ReportsIcon, UsersIcon } from "@/components/icons";
+import { AttendanceIcon, CheckInIcon, EventsIcon, HomeIcon, MembersIcon, MoreIcon, ReportsIcon, SettingsIcon, UsersIcon } from "@/components/icons";
 
 const ITEMS = [
   { href: "/", label: "Home", Icon: HomeIcon },
@@ -13,6 +13,7 @@ const ITEMS = [
   { href: "/attendance", label: "Attendance", Icon: AttendanceIcon },
   { href: "/reports", label: "Reports", Icon: ReportsIcon },
   { href: "/users", label: "Users", Icon: UsersIcon, superAdminOnly: true },
+  { href: "/settings", label: "Settings", Icon: SettingsIcon, superAdminOnly: true },
 ];
 
 function useIsActive() {

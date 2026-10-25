@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { members } from "@/db/schema";
 import { memberScope, requireViewer } from "@/lib/access";
+import { activeMemberCondition } from "@/lib/activity";
+import { getActivityRule } from "@/lib/settings";
 import { getAttendanceByService } from "@/lib/attendance";
 import { getEventsOn } from "@/lib/events";
 import { formatDateString, manilaDateString } from "@/lib/date";
@@ -12,7 +14,8 @@ import { primaryBtnCls, secondaryBtnCls } from "@/components/form";
 
 export default async function DashboardPage() {
   const viewer = await requireViewer();
-  const activeInScope = and(eq(members.isActive, true), memberScope(viewer));
+  // "Active" follows the activity rule when it's on (Settings), else everyone on the roster
+  const activeInScope = and(activeMemberCondition(await getActivityRule()), memberScope(viewer));
 
   const today = manilaDateString();
   const [[{ active }], byMinistry, todayByService] = await Promise.all([

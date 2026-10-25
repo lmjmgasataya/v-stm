@@ -1,8 +1,11 @@
 import Link from "next/link";
-import { and, arrayContains, asc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, arrayContains, asc, eq, getTableColumns, ilike, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { members } from "@/db/schema";
 import { memberScope, requireViewer } from "@/lib/access";
+import { activeMemberCondition, daysServedSql, inactiveMemberCondition, lastServedSql } from "@/lib/activity";
+import { describeActivityRule } from "@/lib/activity-rule";
+import { getActivityRule } from "@/lib/settings";
 import { MINISTRY_OPTIONS, SERVICE_OPTIONS, ministryLabel } from "@/lib/constants";
 import { parseSort } from "@/lib/sort";
 import { SearchBox } from "@/components/SearchBox";
@@ -20,6 +23,7 @@ export default async function MembersPage({
   searchParams: Promise<{ q?: string; ministry?: string; service?: string; status?: string; sort?: string; dir?: string }>;
 }) {
   const viewer = await requireViewer();
+  const rule = await getActivityRule();
 
   const sp = await searchParams;
   const q = sp.q ?? "";
@@ -47,7 +51,9 @@ export default async function MembersPage({
   }
   if (ministry) conditions.push(arrayContains(members.ministries, [ministry]));
   if (service) conditions.push(eq(members.serviceAttending, service));
-  if (status !== "all") conditions.push(eq(members.isActive, status === "active"));
+  // Active/Inactive follow the activity rule when it's on (Settings), else the roster flag
+  if (status === "active") conditions.push(activeMemberCondition(rule));
+  if (status === "inactive") conditions.push(inactiveMemberCondition(rule));
 
   const { sort, dir } = parseSort(sp.sort, sp.dir, MEMBER_SORT_COLUMNS, "lastName");
   const column = members[sort];
@@ -64,7 +70,12 @@ export default async function MembersPage({
   const blank = sort === "mobileNumber" ? sql`nullif(${column}, '')` : column;
 
   const rows = await db
-    .select()
+    .select({
+      ...getTableColumns(members),
+      // Only needed (and only shown) while the activity rule is on
+      lastServed: rule.enabled ? lastServedSql : sql<null>`null`,
+      daysServed: rule.enabled ? daysServedSql(rule) : sql<null>`null`,
+    })
     .from(members)
     .where(and(...conditions))
     .orderBy(
@@ -119,9 +130,12 @@ export default async function MembersPage({
       <p className="text-sm text-stone-500">
         {rows.length} member{rows.length === 1 ? "" : "s"}
         {filtered && " matching"}
+        {rule.enabled && status !== "all" && (
+          <span className="text-stone-400"> · Active = {describeActivityRule(rule).toLowerCase()}</span>
+        )}
       </p>
 
-      <MembersTable rows={rows} sort={sort} dir={dir} canEdit={viewer.canManageMembers} />
+      <MembersTable rows={rows} sort={sort} dir={dir} canEdit={viewer.canManageMembers} activity={rule.enabled ? rule : null} />
     </div>
   );
 }

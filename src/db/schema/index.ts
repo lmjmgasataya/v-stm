@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, integer, date, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, integer, date, uniqueIndex, index, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Every table is prefixed `stm_` because this app shares its database with v-1.
@@ -101,6 +101,14 @@ export const eventCheckIns = pgTable(
   },
   (t) => [uniqueIndex("stm_event_check_ins_event_member_uq").on(t.eventId, t.memberId)]
 );
+
+// Global app settings, one JSON value per key (e.g. "activity_rule"). Read through
+// src/lib/settings.ts, which normalizes the stored shape and supplies defaults.
+export const settings = pgTable("stm_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export type User = typeof users.$inferSelect;
 export type Member = typeof members.$inferSelect;

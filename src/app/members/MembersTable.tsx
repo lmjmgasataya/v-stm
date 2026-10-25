@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Member } from "@/db/schema";
+import type { ActivityRule } from "@/lib/activity-rule";
+import { formatDateString } from "@/lib/date";
 import { MinistryName } from "@/components/MinistryName";
 import { SortableTh } from "@/components/SortableTh";
 import type { SortDir } from "@/lib/sort";
@@ -20,11 +22,14 @@ export function MembersTable({
   sort,
   dir,
   canEdit,
+  activity,
 }: {
-  rows: Member[];
+  rows: (Member & { lastServed: string | null; daysServed: number | null })[];
   sort: MemberSortColumn;
   dir: SortDir;
   canEdit: boolean;
+  /** The activity rule when it's on — adds a "Last served" column and inactive badges. */
+  activity: ActivityRule | null;
 }) {
   if (rows.length === 0) {
     return (
@@ -43,16 +48,30 @@ export function MembersTable({
               <SortableTh key={column} column={column} label={label} sort={sort} dir={dir} />
             ))}
             <th className="px-4 py-3 font-medium">Ministry</th>
+            {activity && <th className="px-4 py-3 font-medium whitespace-nowrap">Last served</th>}
             {canEdit && <th className="px-4 py-3" />}
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">
-          {rows.map((m) => (
-            <tr key={m.id} className={`hover:bg-stone-50/60 ${m.isActive ? "" : "opacity-60"}`}>
+          {rows.map((m) => {
+            // With the rule on, someone still on the roster can be inactive by not serving lately
+            const belowRule = activity !== null && m.isActive && (m.daysServed ?? 0) < activity.minServes;
+            return (
+            <tr key={m.id} className={`hover:bg-stone-50/60 ${m.isActive && !belowRule ? "" : "opacity-60"}`}>
               <td className="px-4 py-2.5 font-medium text-stone-900 whitespace-nowrap">
                 {m.lastName}
                 {!m.isActive && (
-                  <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-normal text-stone-500">Inactive</span>
+                  <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-normal text-stone-500">
+                    {activity ? "Off roster" : "Inactive"}
+                  </span>
+                )}
+                {belowRule && (
+                  <span
+                    className="ml-2 rounded-full bg-stm-amber/15 px-2 py-0.5 text-xs font-semibold text-stm-amber"
+                    title={`Served ${m.daysServed ?? 0} day(s) in the last ${activity.withinDays} days`}
+                  >
+                    Inactive
+                  </span>
                 )}
               </td>
               <td className="px-4 py-2.5 text-stone-900 whitespace-nowrap">
@@ -82,6 +101,11 @@ export function MembersTable({
                   ))}
                 </div>
               </td>
+              {activity && (
+                <td className="px-4 py-2.5 text-stone-600 whitespace-nowrap">
+                  {m.lastServed ? formatDateString(m.lastServed).replace(/^\w+, /, "") : "Never"}
+                </td>
+              )}
               {canEdit && (
                 <td className="px-4 py-2.5 text-right whitespace-nowrap">
                   <Link href={`/members/${m.id}/edit`} className="text-stm-brand hover:underline">
@@ -90,7 +114,8 @@ export function MembersTable({
                 </td>
               )}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

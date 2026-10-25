@@ -1,111 +1,161 @@
 import Link from "next/link";
 import { requireViewer } from "@/lib/access";
-import { SERVICE_GROUPS, SERVICE_GROUP_NAMES, isServiceGroup } from "@/lib/constants";
-import { BarList, type BarRow } from "@/components/BarList";
+import { ministryLabel } from "@/lib/constants";
+import { formatDateString, isDateString, manilaDateString } from "@/lib/date";
+import { NO_MINISTRY, getMinistryServiceTable, getServiceDates } from "@/lib/reports";
 import { MinistryName } from "@/components/MinistryName";
-import { StatCard, percent } from "@/components/StatCard";
-import { NOT_SET, getDemographics, type Count } from "@/lib/reports";
+import { DateSelect } from "./DateSelect";
+import { DownloadCsvButton } from "./DownloadCsvButton";
 
-export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
+/** "9AM - Mandurriao" → ["9AM", "Mandurriao"] */
+const splitService = (s: string) => [s.split(" - ")[0], s.split(" - ")[1] ?? ""] as const;
+
+export default async function MinistryServiceReportPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const viewer = await requireViewer();
-  const { group: groupParam } = await searchParams;
-  // Filter by service group. A group user only has their own group, so they get no filter.
-  const groups = viewer.serviceGroup ? [] : SERVICE_GROUP_NAMES;
-  const group = isServiceGroup(groupParam) && groups.includes(groupParam) ? groupParam : null;
-  const services = group ? SERVICE_GROUPS[group] : viewer.services;
-  const d = await getDemographics(viewer, group ? services : null);
+  const { date: dateParam } = await searchParams;
 
-  const toRows = (counts: Count[], label?: (c: Count) => React.ReactNode): BarRow[] =>
-    counts.map((c) => ({ label: label ? label(c) : c.label, text: c.label, value: c.value, muted: c.label === NOT_SET }));
-  const scopeName = group ?? viewer.serviceGroup ?? "All services";
+  const dates = await getServiceDates(viewer.services);
+  const today = manilaDateString();
+  // Default: the latest day with check-ins (usually last Sunday), not today's empty one
+  const date = isDateString(dateParam) ? dateParam : (dates.find((d) => d.date <= today)?.date ?? today);
+  const table = await getMinistryServiceTable(date, viewer.services);
+
+  // Dates are newest first: "previous" is the next entry, "next" the one before
+  const index = dates.findIndex((d) => d.date === date);
+  const older = index === -1 ? dates.find((d) => d.date < date) : dates[index + 1];
+  const newer = index === -1 ? [...dates].reverse().find((d) => d.date > date) : dates[index - 1];
+
+  const max = Math.max(1, ...table.rows.flatMap((r) => r.counts));
+  const csvRows: (string | number)[][] = [
+    ["Ministry", ...table.services, "Total"],
+    ...table.rows.map((r) => [r.ministry, ...r.counts, r.total]),
+    ["Total STMs", ...table.serviceTotals, table.total],
+  ];
+
+  const navCls =
+    "flex h-10 w-10 items-center justify-center rounded-full bg-white text-stone-600 ring-1 ring-stone-200 transition hover:text-stm-brand hover:ring-stm-brand/40";
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Demographics</h1>
-        <p className="text-sm text-stone-500">Active service team members · {scopeName}</p>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center gap-3">
+        {older ? (
+          <Link href={`/reports?date=${older.date}`} replace scroll={false} aria-label="Previous day with check-ins" className={navCls}>
+            ‹
+          </Link>
+        ) : (
+          <span className={`${navCls} opacity-40`} aria-hidden="true">‹</span>
+        )}
+        <DateSelect dates={dates} value={date} />
+        {newer ? (
+          <Link href={`/reports?date=${newer.date}`} replace scroll={false} aria-label="Next day with check-ins" className={navCls}>
+            ›
+          </Link>
+        ) : (
+          <span className={`${navCls} opacity-40`} aria-hidden="true">›</span>
+        )}
+        <div className="ml-auto">
+          <DownloadCsvButton filename={`stm-ministry-by-service-${date}.csv`} rows={csvRows} disabled={table.total === 0} />
+        </div>
       </div>
 
-      {/* Filters: one row, above everything they affect */}
-      {groups.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Service group">
-          {[null, ...groups].map((g) => {
-            const active = g === group;
-            return (
-              <Link
-                key={g ?? "all"}
-                href={g ? `/reports?group=${encodeURIComponent(g)}` : "/reports"}
-                replace
-                scroll={false}
-                aria-current={active || undefined}
-                className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
-                  active
-                    ? "bg-stm-brand text-white shadow-sm"
-                    : "bg-white text-stone-600 ring-1 ring-stone-200 hover:ring-stm-brand/40 hover:text-stm-brand"
-                }`}
-              >
-                {g ?? "All"}
-              </Link>
-            );
-          })}
+      <section className="bg-white rounded-2xl border border-stone-200/80 shadow-sm">
+        <div className="px-5 pt-5 pb-3">
+          <h2 className="font-bold text-stone-900">STMs who served · {formatDateString(date)}</h2>
+          <p className="text-xs text-stone-500">
+            {table.total} STM{table.total === 1 ? "" : "s"} checked in. Someone in several ministries counts in each row; totals
+            count each person once.
+          </p>
         </div>
-      )}
 
-      {d.total === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-12 text-center text-sm text-stone-500">
-          No active members{group ? ` in ${group}` : ""} yet.
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Active members" value={d.total.toLocaleString()} />
-            <StatCard label="Average age" value={d.averageAge ?? "—"} hint={d.averageAge === null ? "No ages recorded" : undefined} />
-            <StatCard label="With a VGL" value={percent(d.withVgl, d.total)} hint={`${d.withVgl} of ${d.total}`} />
-            <StatCard
-              label="Full discipleship journey"
-              value={percent(d.journeyComplete, d.total)}
-              hint={`${d.journeyComplete} completed all steps`}
-            />
+        {table.total === 0 ? (
+          <p className="px-5 pb-6 text-sm text-stone-400">No service check-ins on this day.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            {/* Fixed layout: every service column the same width; scrolls sideways on phones */}
+            <table className="w-full min-w-[44rem] table-fixed text-sm">
+              <colgroup>
+                <col className="w-44" />
+                {table.services.map((s) => (
+                  <col key={s} />
+                ))}
+                <col className="w-20" />
+              </colgroup>
+              <thead>
+                <tr className="border-y border-stone-200 bg-stone-50 text-xs text-stone-500">
+                  <th scope="col" className="sticky left-0 bg-stone-50 px-4 py-2.5 text-left font-semibold uppercase tracking-wide">
+                    Ministry
+                  </th>
+                  {table.services.map((s) => {
+                    const [time, place] = splitService(s);
+                    return (
+                      <th key={s} scope="col" className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">
+                        <span className="block text-sm text-stone-800">{time}</span>
+                        <span className="block font-normal">{place}</span>
+                      </th>
+                    );
+                  })}
+                  <th scope="col" className="px-4 py-2.5 text-center font-semibold uppercase tracking-wide">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {table.rows.map((r) => (
+                  <tr key={r.ministry}>
+                    <th scope="row" className="sticky left-0 bg-white px-4 py-2 text-left font-medium text-stone-700 whitespace-nowrap">
+                      {r.ministry === NO_MINISTRY ? <span className="text-stone-400">{r.ministry}</span> : <MinistryName ministry={r.ministry} />}
+                    </th>
+                    {r.counts.map((n, i) => (
+                      <td key={table.services[i]} className="px-1.5 py-1.5 text-center">
+                        <HeatCell value={n} max={max} title={`${ministryLabel(r.ministry)} · ${table.services[i]}: ${n} STM${n === 1 ? "" : "s"}`} />
+                      </td>
+                    ))}
+                    <td className="px-4 py-2 text-center font-semibold tabular-nums text-stone-900">{r.total || <span className="text-stone-300">–</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-stone-200 bg-stone-50">
+                  <th scope="row" className="sticky left-0 bg-stone-50 px-4 py-2.5 text-left font-bold text-stone-900">
+                    Total STMs
+                  </th>
+                  {table.serviceTotals.map((n, i) => (
+                    <td key={table.services[i]} className="px-2 py-2.5 text-center font-bold tabular-nums text-stone-900">
+                      {n || <span className="font-normal text-stone-300">–</span>}
+                    </td>
+                  ))}
+                  <td className="px-4 py-2.5 text-center text-base font-extrabold tabular-nums text-stm-brand">{table.total}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ChartCard title="Gender" subtitle={`of ${d.total} members`}>
-              <BarList rows={toRows(d.gender)} total={d.total} />
-            </ChartCard>
-            <ChartCard title="Age group" subtitle={`of ${d.total} members`}>
-              <BarList rows={toRows(d.ageGroups)} total={d.total} />
-            </ChartCard>
-            <ChartCard title="Lifestage" subtitle={`of ${d.total} members`}>
-              <BarList rows={toRows(d.lifestage)} total={d.total} />
-            </ChartCard>
-            <ChartCard title="Ministry" subtitle="Members serving in several ministries count in each">
-              <BarList rows={toRows(d.ministries, (c) => <MinistryName ministry={c.label} />)} total={d.total} />
-            </ChartCard>
-            <ChartCard title="Discipleship journey" subtitle="Members who completed each step">
-              <BarList rows={toRows(d.journey)} total={d.total} />
-            </ChartCard>
-            <ChartCard title="Victory Group Leader" subtitle={`of ${d.total} members`}>
-              <BarList rows={toRows(d.vgl)} total={d.total} />
-            </ChartCard>
-            {/* Split by service whenever the view spans more than one (e.g. 2PM vs 4PM) */}
-            {services.length > 1 && (
-              <ChartCard title="Service attending" subtitle={`of ${d.total} members`}>
-                <BarList rows={toRows(d.services)} total={d.total} />
-              </ChartCard>
-            )}
-          </div>
-        </>
-      )}
+        )}
+      </section>
     </div>
   );
 }
 
-function ChartCard({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+// Sequential teal in five steps (more STMs → darker). The ramp skips the middle band where
+// neither white nor dark text reads well: light steps carry dark ink, dark steps white text.
+// Contrast (computed): 14.8, 11.3, 8.2 (ink) · 5.5, 11.7 (white) — all ≥ 4.5:1.
+const HEAT_STEPS = [
+  { bg: "#e2efee", text: "#1c1917" },
+  { bg: "#b7d6d4", text: "#1c1917" },
+  { bg: "#87bbb7", text: "#1c1917" },
+  { bg: "var(--color-stm-brand)", text: "#ffffff" },
+  { bg: "var(--color-stm-brand-dark)", text: "#ffffff" },
+];
+
+function HeatCell({ value, max, title }: { value: number; max: number; title: string }) {
+  if (value === 0) return <span className="block rounded-lg py-1.5 text-stone-300" title={title}>–</span>;
+  const step = HEAT_STEPS[Math.min(HEAT_STEPS.length - 1, Math.ceil((value / max) * HEAT_STEPS.length) - 1)];
   return (
-    <section className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-5">
-      <h2 className="font-bold text-stone-900">{title}</h2>
-      <p className="text-xs text-stone-500 mb-4">{subtitle}</p>
-      {children}
-    </section>
+    <span
+      title={title}
+      className="block rounded-lg py-1.5 font-semibold tabular-nums"
+      style={{ backgroundColor: step.bg, color: step.text }}
+    >
+      {value}
+    </span>
   );
 }
