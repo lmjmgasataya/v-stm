@@ -341,7 +341,7 @@ export function CheckInWorkspace({
         <>
           <section>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-2">
-              Not yet checked in ({remaining})
+              Check someone in
             </h2>
             {!browsing ? (
               <p className="rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-6 text-center text-sm text-stone-500">

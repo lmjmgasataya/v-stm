@@ -56,11 +56,26 @@ export const AttendanceIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const ReportsIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3a9 9 0 1 0 9 9h-9z" />
+    <path d="M15 3.5A9 9 0 0 1 20.5 9H15z" />
+  </Svg>
+);
+
 export const UsersIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.3 7.5 9.5 4.4-1.2 7.5-4.9 7.5-9.5V6z" />
     <circle cx="12" cy="10.5" r="2.5" />
     <path d="M8.2 16.5a4.2 4.2 0 0 1 7.6 0" />
+  </Svg>
+);
+
+export const MoreIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="5" cy="12" r="1.2" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+    <circle cx="19" cy="12" r="1.2" fill="currentColor" />
   </Svg>
 );
 
