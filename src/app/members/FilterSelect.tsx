@@ -31,7 +31,7 @@ export function FilterSelect({
         else params.delete(param);
         router.replace(`${pathname}?${params.toString()}`);
       }}
-      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stm-navy/40 focus:border-transparent"
+      className="rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm shadow-xs transition focus:outline-none focus:ring-4 focus:ring-stm-brand/15 focus:border-stm-brand"
     >
       <option value="">{label}</option>
       {options.map((option) => (

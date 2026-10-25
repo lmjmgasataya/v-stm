@@ -19,12 +19,12 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => vo
     >
       <div className="flex items-start gap-3 px-4 py-3">
         <span className="text-lg leading-none">{styles.icon}</span>
-        <p className="flex-1 text-sm font-medium text-stm-navy">{toast.message}</p>
+        <p className="flex-1 text-sm font-medium text-stm-brand">{toast.message}</p>
         <button
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss"
-          className="text-lg leading-none text-gray-400 hover:text-gray-600"
+          className="text-lg leading-none text-stone-400 hover:text-stone-600"
         >
           ×
         </button>

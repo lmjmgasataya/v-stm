@@ -60,7 +60,7 @@ export function NavigationProgress() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed top-0 left-0 z-[9999] h-[3px] bg-[linear-gradient(to_right,var(--color-stm-accent),var(--color-stm-navy),var(--color-stm-green),var(--color-stm-amber))] shadow-[0_0_8px_2px_rgba(28,63,139,0.5)] transition-[width,opacity] duration-300 ease-out"
+      className="pointer-events-none fixed top-0 left-0 z-[9999] h-[3px] bg-[linear-gradient(to_right,var(--color-stm-accent),var(--color-stm-brand),var(--color-stm-green),var(--color-stm-amber))] shadow-[0_0_8px_2px_rgba(15,118,110,0.45)] transition-[width,opacity] duration-300 ease-out"
       style={{
         width: `${progress}%`,
         opacity: visible ? 1 : 0,

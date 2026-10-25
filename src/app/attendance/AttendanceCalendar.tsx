@@ -37,15 +37,15 @@ export function AttendanceCalendar({
   const activeDays = days.filter((d) => counts.has(d));
   const monthTotal = activeDays.reduce((sum, d) => sum + counts.get(d)!, 0);
   const monthHref = (delta: number) => `/attendance?date=${selected}&month=${addMonths(month, delta)}${keep}`;
-  const navCls = "rounded-lg px-2 py-1 text-gray-500 hover:bg-gray-100 hover:text-stm-navy transition";
+  const navCls = "rounded-lg px-2 py-1 text-stone-500 hover:bg-stone-100 hover:text-stm-brand transition";
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 w-full sm:w-80">
+    <div className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-4 w-full sm:w-80">
       <div className="flex items-center justify-between mb-3">
         <Link href={monthHref(-1)} replace scroll={false} aria-label="Previous month" className={navCls}>
           ‹
         </Link>
-        <p className="font-semibold text-gray-900">{monthLabel}</p>
+        <p className="font-semibold text-stone-900">{monthLabel}</p>
         <Link href={monthHref(1)} replace scroll={false} aria-label="Next month" className={navCls}>
           ›
         </Link>
@@ -53,7 +53,7 @@ export function AttendanceCalendar({
 
       <div className="grid grid-cols-7 gap-1 text-center">
         {WEEKDAYS.map((d) => (
-          <span key={d} className="text-[11px] font-medium uppercase text-gray-400 pb-1">
+          <span key={d} className="text-[11px] font-medium uppercase text-stone-400 pb-1">
             {d}
           </span>
         ))}
@@ -73,11 +73,11 @@ export function AttendanceCalendar({
               title={count ? `${count} check-in${count === 1 ? "" : "s"}` : "No check-ins"}
               className={`flex h-10 flex-col items-center justify-center rounded-lg text-sm leading-none transition ${
                 isSelected
-                  ? "bg-stm-navy text-white"
+                  ? "bg-stm-brand text-white"
                   : count
-                    ? "bg-stm-green/10 font-bold text-stm-navy hover:bg-stm-green/20"
-                    : "text-gray-400 hover:bg-gray-100"
-              } ${day === today && !isSelected ? "ring-1 ring-stm-navy/40" : ""}`}
+                    ? "bg-stm-green/10 font-bold text-stm-brand hover:bg-stm-green/20"
+                    : "text-stone-400 hover:bg-stone-100"
+              } ${day === today && !isSelected ? "ring-1 ring-stm-brand/40" : ""}`}
             >
               {Number(day.slice(8))}
               {count ? (
@@ -90,14 +90,14 @@ export function AttendanceCalendar({
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+      <div className="mt-3 flex items-center justify-between text-xs text-stone-500">
         <span>
           {activeDays.length
             ? `${monthTotal} check-in${monthTotal === 1 ? "" : "s"} on ${activeDays.length} day${activeDays.length === 1 ? "" : "s"}`
             : "No check-ins this month"}
         </span>
         {selected !== today && (
-          <Link href={`/attendance?date=${today}${keep}`} replace scroll={false} className="font-semibold text-stm-navy hover:underline">
+          <Link href={`/attendance?date=${today}${keep}`} replace scroll={false} className="font-semibold text-stm-brand hover:underline">
             Today
           </Link>
         )}

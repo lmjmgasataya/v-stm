@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { members } from "@/db/schema";
 import { memberScope, requireViewer } from "@/lib/access";
 import { getAttendanceByService } from "@/lib/attendance";
+import { getEventsOn } from "@/lib/events";
 import { formatDateString, manilaDateString } from "@/lib/date";
 import { MinistryName } from "@/components/MinistryName";
 import { StatCard } from "@/components/StatCard";
@@ -24,14 +25,15 @@ export default async function DashboardPage() {
       .orderBy(sql`1`),
     getAttendanceByService(today, viewer.services),
   ]);
+  const todaysEvents = await getEventsOn(today);
   const checkedInToday = todayByService.reduce((sum, s) => sum + s.rows.length, 0);
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-stm-navy">Service Team{viewer.serviceGroup && ` · ${viewer.serviceGroup}`}</h1>
-          <p className="text-sm text-gray-500">{formatDateString(today)}</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Service Team{viewer.serviceGroup && ` · ${viewer.serviceGroup}`}</h1>
+          <p className="text-sm text-stone-500">{formatDateString(today)}</p>
         </div>
         <div className="flex gap-2">
           {viewer.canManageMembers && (
@@ -50,16 +52,33 @@ export default async function DashboardPage() {
         <StatCard label="Checked in today" value={checkedInToday} />
       </div>
 
+      {todaysEvents.length > 0 && (
+        <section>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-3">Today&apos;s events</h2>
+          <div className="flex flex-wrap gap-3">
+            {todaysEvents.map((event) => (
+              <Link
+                key={event.id}
+                href={`/events/${event.id}`}
+                className="rounded-xl border-2 border-stm-brand/20 bg-white px-4 py-3 font-semibold text-stm-brand hover:border-stm-brand/50 hover:shadow-sm transition"
+              >
+                ★ {event.name} <span className="ml-1 text-sm font-medium text-stone-500">→ Check in</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">Today by service</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-3">Today by service</h2>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
           {todayByService.map(({ service, rows }) => (
             <Link
               key={service}
               href={`/check-in?service=${encodeURIComponent(service)}`}
-              className="bg-white rounded-xl border border-gray-200 p-3 hover:border-stm-navy/40 hover:shadow-sm transition"
+              className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-3 hover:border-stm-brand/40 hover:shadow-sm transition"
             >
-              <p className="text-xs text-gray-500">{service}</p>
+              <p className="text-xs text-stone-500">{service}</p>
               <p className="text-xl font-bold text-stm-green">{rows.length}</p>
             </Link>
           ))}
@@ -67,21 +86,21 @@ export default async function DashboardPage() {
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">Active members by ministry</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-3">Active members by ministry</h2>
         {byMinistry.length === 0 ? (
-          <p className="text-sm text-gray-400">No members yet.</p>
+          <p className="text-sm text-stone-400">No members yet.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {byMinistry.map(({ ministry, total }) => (
               <Link
                 key={ministry}
                 href={`/members?ministry=${encodeURIComponent(ministry)}`}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm hover:border-stm-navy/40 transition"
+                className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm hover:border-stm-brand/40 transition"
               >
-                <span className="text-gray-600">
+                <span className="text-stone-600">
                   <MinistryName ministry={ministry} />
                 </span>{" "}
-                <span className="font-bold text-stm-navy">{total}</span>
+                <span className="font-bold text-stm-brand">{total}</span>
               </Link>
             ))}
           </div>

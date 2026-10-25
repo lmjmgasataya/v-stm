@@ -17,7 +17,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
   return (
     <div>
       <Breadcrumbs items={[{ label: "Users", href: "/users" }, { label: user.name }]} />
-      <h1 className="text-2xl font-bold text-stm-navy mb-4">Edit {user.name}</h1>
+      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900 mb-4">Edit {user.name}</h1>
       <UserForm user={user} isSelf={user.id === viewer.userId} />
     </div>
   );

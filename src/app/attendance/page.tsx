@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { requireViewer } from "@/lib/access";
+import { memberScope, requireViewer } from "@/lib/access";
 import {
   getAttendanceByService,
   getCheckInCountsByDate,
+  getEventAttendance,
   getRecentServiceDates,
   type AttendanceRow,
 } from "@/lib/attendance";
@@ -55,13 +56,16 @@ export default async function AttendancePage({
   }
   const keep = href({}).replace(/^\/attendance\?date=[^&]*/, ""); // "&ministry=…&sort=…" for the calendar
 
-  const [services, recentDates, calendarCounts] = await Promise.all([
+  const scope = { services: viewer.services, members: memberScope(viewer) };
+  const [services, dayEvents, recentDates, calendarCounts] = await Promise.all([
     getAttendanceByService(date, viewer.services),
-    getRecentServiceDates(viewer.services, ministry || undefined),
-    getCheckInCountsByDate(`${month}-01`, new Date(lastOfMonth).toISOString().slice(0, 10), viewer.services, ministry || undefined),
+    getEventAttendance(date, scope),
+    getRecentServiceDates(scope, ministry || undefined),
+    getCheckInCountsByDate(`${month}-01`, new Date(lastOfMonth).toISOString().slice(0, 10), scope, ministry || undefined),
   ]);
 
-  const all = services.flatMap((s) => s.rows);
+  // Totals and ministry counts cover the day's services and events together
+  const all = [...services, ...dayEvents].flatMap((s) => s.rows);
   // A member serving in several ministries counts once in each (always over the whole day, so
   // every chip shows its own count even while another ministry is selected)
   const ministryCounts = MINISTRY_OPTIONS.map((m) => ({
@@ -71,17 +75,22 @@ export default async function AttendancePage({
   const allMembers = new Set(all.map((r) => r.memberId)).size;
 
   const sign = dir === "asc" ? 1 : -1;
-  const shown = services.map(({ service, rows }) => ({
-    service,
-    rows: rows.filter((r) => !ministry || r.ministries.includes(ministry)).sort((a, b) => sign * COMPARE[sort](a, b)),
+  const prepare = (rows: AttendanceRow[]) =>
+    rows.filter((r) => !ministry || r.ministries.includes(ministry)).sort((a, b) => sign * COMPARE[sort](a, b));
+  const serviceCards = services.map(({ service, rows }) => ({ key: service, title: service, href: undefined, rows: prepare(rows) }));
+  const eventCards = dayEvents.map(({ event, rows }) => ({
+    key: `event-${event.id}`,
+    title: `★ ${event.name}`,
+    href: `/events/${event.id}`,
+    rows: prepare(rows),
   }));
-  const shownAll = shown.flatMap((s) => s.rows);
+  const shownAll = [...serviceCards, ...eventCards].flatMap((s) => s.rows);
   const uniqueMembers = new Set(shownAll.map((r) => r.memberId)).size;
   const filterNote = ministry ? `${ministryLabel(ministry)} only` : undefined;
 
   const chipCls = (active: boolean) =>
     `rounded-lg border px-3 py-1.5 text-sm transition ${
-      active ? "border-stm-navy bg-stm-navy text-white" : "border-gray-200 bg-white hover:border-stm-navy/40"
+      active ? "border-stm-brand bg-stm-brand text-white" : "border-stone-200 bg-white hover:border-stm-brand/40"
     }`;
 
   return (
@@ -89,8 +98,8 @@ export default async function AttendancePage({
       {/* Phones: title, calendar, stats. Wider: calendar on the right of both. */}
       <div className="grid gap-6 sm:grid-cols-[1fr_auto] content-start">
         <div className="sm:col-start-1">
-          <h1 className="text-2xl font-bold text-stm-navy">Attendance{viewer.serviceGroup && ` · ${viewer.serviceGroup}`}</h1>
-          <p className="text-sm text-gray-500">{formatDateString(date)}</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Attendance{viewer.serviceGroup && ` · ${viewer.serviceGroup}`}</h1>
+          <p className="text-sm text-stone-500">{formatDateString(date)}</p>
         </div>
 
         <div className="sm:col-start-2 sm:row-start-1 sm:row-span-2">
@@ -100,13 +109,13 @@ export default async function AttendancePage({
         <div className="sm:col-start-1 flex flex-col gap-6 min-w-0">
           {recentDates.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-gray-500">Recent:</span>
+              <span className="text-stone-500">Recent:</span>
               {recentDates.map((d) => (
                 <Link
                   key={d.date}
                   href={href({ date: d.date })}
                   className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                    d.date === date ? "bg-stm-navy text-white" : "bg-gray-100 text-gray-600 hover:text-stm-navy"
+                    d.date === date ? "bg-stm-brand text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:ring-stm-brand/40 hover:text-stm-brand"
                   }`}
                 >
                   {d.date} · {d.total}
@@ -121,10 +130,10 @@ export default async function AttendancePage({
           </div>
 
           <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">Filter by ministry</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-3">Filter by ministry</h2>
             <div className="flex flex-wrap gap-2">
               <Link href={href({ ministry: "" })} replace scroll={false} className={chipCls(!ministry)} aria-current={!ministry || undefined}>
-                All <span className={`font-bold ${ministry ? "text-stm-navy" : ""}`}>{allMembers}</span>
+                All <span className={`font-bold ${ministry ? "text-stm-brand" : ""}`}>{allMembers}</span>
               </Link>
               {ministryCounts.map(({ ministry: m, count }) => {
                 const active = m === ministry;
@@ -138,10 +147,10 @@ export default async function AttendancePage({
                     aria-current={active || undefined}
                     className={chipCls(active)}
                   >
-                    <span className={active ? "" : "text-gray-600"}>
+                    <span className={active ? "" : "text-stone-600"}>
                       <MinistryName ministry={m} />
                     </span>{" "}
-                    <span className={`font-bold ${active ? "" : "text-stm-navy"}`}>{count}</span>
+                    <span className={`font-bold ${active ? "" : "text-stm-brand"}`}>{count}</span>
                   </Link>
                 );
               })}
@@ -151,7 +160,7 @@ export default async function AttendancePage({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-gray-500">Sort:</span>
+        <span className="text-stone-500">Sort:</span>
         {SORT_KEYS.map((key) => {
           const active = key === sort;
           return (
@@ -163,7 +172,7 @@ export default async function AttendancePage({
               scroll={false}
               aria-current={active || undefined}
               className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                active ? "bg-stm-navy text-white" : "bg-gray-100 text-gray-600 hover:text-stm-navy"
+                active ? "bg-stm-brand text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:ring-stm-brand/40 hover:text-stm-brand"
               }`}
             >
               {SORTS[key]}
@@ -173,37 +182,75 @@ export default async function AttendancePage({
         })}
       </div>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        {shown.map(({ service, rows }) => (
-          <div key={service} className="bg-white rounded-xl border border-gray-200">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900">{service}</h3>
-              <span className="text-sm font-bold text-stm-green">{rows.length}</span>
-            </div>
-            {rows.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-gray-400">
-                {ministry ? `No ${ministryLabel(ministry)} check-ins.` : "No check-ins."}
-              </p>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {rows.map((r) => (
-                  <li key={r.memberId} className="flex items-center justify-between gap-3 px-4 py-2 text-sm">
-                    <div className="min-w-0">
-                      <p className="text-gray-900 truncate">
-                        {sort === "first"
-                          ? `${r.firstName}${r.nickname ? ` (${r.nickname})` : ""} ${r.lastName}`
-                          : memberDisplayName(r)}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">{ministryList(r.ministries)}</p>
-                    </div>
-                    <span className="shrink-0 text-xs text-gray-500">{formatTime(r.checkedInAt)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+      {eventCards.length > 0 && (
+        <section>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-3">Events</h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {eventCards.map((card) => (
+              <AttendanceCard key={card.key} title={card.title} href={card.href} rows={card.rows} ministry={ministry} sort={sort} />
+            ))}
           </div>
-        ))}
+        </section>
+      )}
+
+      <section>
+        {eventCards.length > 0 && (
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-3">Services</h2>
+        )}
+        <div className="grid gap-4 lg:grid-cols-2">
+          {serviceCards.map((card) => (
+            <AttendanceCard key={card.key} title={card.title} href={card.href} rows={card.rows} ministry={ministry} sort={sort} />
+          ))}
+        </div>
       </section>
+    </div>
+  );
+}
+
+function AttendanceCard({
+  title,
+  href,
+  rows,
+  ministry,
+  sort,
+}: {
+  title: string;
+  href: string | undefined;
+  rows: AttendanceRow[];
+  ministry: string;
+  sort: SortKey;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-stone-200/80 shadow-sm">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
+        <h3 className="font-semibold text-stone-900">
+          {href ? (
+            <Link href={href} className="hover:text-stm-brand hover:underline">
+              {title}
+            </Link>
+          ) : (
+            title
+          )}
+        </h3>
+        <span className="text-sm font-bold text-stm-green">{rows.length}</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="px-4 py-3 text-sm text-stone-400">{ministry ? `No ${ministryLabel(ministry)} check-ins.` : "No check-ins."}</p>
+      ) : (
+        <ul className="divide-y divide-stone-100">
+          {rows.map((r) => (
+            <li key={r.memberId} className="flex items-center justify-between gap-3 px-4 py-2 text-sm">
+              <div className="min-w-0">
+                <p className="text-stone-900 truncate">
+                  {sort === "first" ? `${r.firstName}${r.nickname ? ` (${r.nickname})` : ""} ${r.lastName}` : memberDisplayName(r)}
+                </p>
+                <p className="text-xs text-stone-500 truncate">{ministryList(r.ministries)}</p>
+              </div>
+              <span className="shrink-0 text-xs text-stone-500">{formatTime(r.checkedInAt)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

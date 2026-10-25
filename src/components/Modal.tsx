@@ -34,8 +34,8 @@ export function Modal({
         className={`w-full ${wide === "xl" ? "max-w-4xl" : wide ? "max-w-2xl" : "max-w-md"} max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl`}
       >
         <div className="flex items-start justify-between mb-4">
-          <h3 className="text-lg font-semibold text-stm-navy">{title}</h3>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-xl leading-none text-gray-400 hover:text-gray-600">
+          <h3 className="text-lg font-semibold text-stm-brand">{title}</h3>
+          <button type="button" onClick={onClose} aria-label="Close" className="text-xl leading-none text-stone-400 hover:text-stone-600">
             ×
           </button>
         </div>

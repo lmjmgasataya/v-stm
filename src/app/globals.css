@@ -1,10 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --color-stm-navy: #1c3f8b;
-  --color-stm-accent: #e4572e;
-  --color-stm-green: #2f9e44;
-  --color-stm-amber: #f0a202;
+  /* Deep teal brand with a warm coral accent, on warm stone neutrals */
+  --color-stm-brand: #0f766e;
+  --color-stm-brand-dark: #0b3f3c;
+  --color-stm-accent: #f26b4f;
+  --color-stm-green: #15803d;
+  --color-stm-amber: #d97706;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -12,8 +15,11 @@
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
-  background-color: #f7f8fb;
+  background-color: #f7f5f0;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-stm-brand) 20%, transparent);
 }
 
 button {

@@ -15,7 +15,7 @@ export function UserForm({ user, isSelf = false }: { user?: User; isSelf?: boole
   const [deleting, startDelete] = useTransition();
 
   return (
-    <form onSubmit={submitKeepingValues(dispatch)} className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4 max-w-xl">
+    <form onSubmit={submitKeepingValues(dispatch)} className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-6 flex flex-col gap-4 max-w-xl">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Name" name="name" required defaultValue={user?.name} placeholder="e.g. 2PM & 4PM Team" />
         <Field label="Username" name="username" required defaultValue={user?.username} autoComplete="off" />
@@ -23,7 +23,7 @@ export function UserForm({ user, isSelf = false }: { user?: User; isSelf?: boole
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="serviceGroup" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="serviceGroup" className="block text-sm font-medium text-stone-700 mb-1">
             Service group
           </label>
           <select id="serviceGroup" name="serviceGroup" defaultValue={user?.serviceGroup ?? ""} disabled={isSelf} className={inputCls}>
@@ -36,10 +36,10 @@ export function UserForm({ user, isSelf = false }: { user?: User; isSelf?: boole
           </select>
           {/* A disabled select isn't posted — send the unchanged value for your own account */}
           {isSelf && <input type="hidden" name="serviceGroup" value={user?.serviceGroup ?? ""} />}
-          <p className="text-xs text-gray-400 mt-1">Only sees members, check-ins and attendance for these services.</p>
+          <p className="text-xs text-stone-400 mt-1">Only sees members, check-ins and attendance for these services.</p>
         </div>
         <div>
-          <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="role" className="block text-sm font-medium text-stone-700 mb-1">
             Role
           </label>
           <select id="role" name="role" defaultValue={user?.role ?? "volunteer"} disabled={isSelf} className={inputCls}>
@@ -47,7 +47,7 @@ export function UserForm({ user, isSelf = false }: { user?: User; isSelf?: boole
             <option value="admin">Admin — can also add, edit and import members</option>
           </select>
           {isSelf && <input type="hidden" name="role" value={user?.role} />}
-          <p className="text-xs text-gray-400 mt-1">An admin with All services also manages users.</p>
+          <p className="text-xs text-stone-400 mt-1">An admin with All services also manages users.</p>
         </div>
       </div>
 

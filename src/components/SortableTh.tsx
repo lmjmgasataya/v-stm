@@ -36,7 +36,7 @@ export function SortableTh({
         href={`${pathname}?${params.toString()}`}
         replace
         scroll={false}
-        className={`inline-flex items-center gap-1 hover:text-stm-navy transition ${active ? "text-stm-navy" : ""}`}
+        className={`inline-flex items-center gap-1 hover:text-stm-brand transition ${active ? "text-stm-brand" : ""}`}
       >
         {label}
         <span aria-hidden className={`text-[10px] ${active ? "" : "opacity-30"}`}>

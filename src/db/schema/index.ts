@@ -69,6 +69,40 @@ export const checkIns = pgTable(
   ]
 );
 
+// Custom events outside the usual services (e.g. a weekday prayer night). Shared by every
+// staff user; each one only sees and checks in members within their own services.
+export const events = pgTable(
+  "stm_events",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    // Manila calendar date (YYYY-MM-DD)
+    eventDate: date("event_date").notNull(),
+    notes: text("notes"),
+    createdById: integer("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("stm_events_date_idx").on(t.eventDate)]
+);
+
+// Kept apart from stm_check_ins so service attendance numbers aren't mixed with events.
+export const eventCheckIns = pgTable(
+  "stm_event_check_ins",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    memberId: integer("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    checkedInAt: timestamp("checked_in_at", { withTimezone: true }).notNull().defaultNow(),
+    checkedInById: integer("checked_in_by_id").references(() => users.id, { onDelete: "set null" }),
+  },
+  (t) => [uniqueIndex("stm_event_check_ins_event_member_uq").on(t.eventId, t.memberId)]
+);
+
 export type User = typeof users.$inferSelect;
 export type Member = typeof members.$inferSelect;
 export type CheckIn = typeof checkIns.$inferSelect;
+export type Event = typeof events.$inferSelect;

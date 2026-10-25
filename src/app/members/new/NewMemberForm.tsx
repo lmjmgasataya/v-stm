@@ -22,7 +22,7 @@ export function NewMemberForm({ vglOptions, serviceOptions }: { vglOptions: VglO
   }, [state]);
 
   return (
-    <form ref={formRef} onSubmit={submitKeepingValues(action)} className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-6 max-w-3xl">
+    <form ref={formRef} onSubmit={submitKeepingValues(action)} className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-6 flex flex-col gap-6 max-w-3xl">
       <MemberFields vglOptions={vglOptions} serviceOptions={serviceOptions} />
       <FormError message={state?.error} />
       <div className="flex flex-wrap justify-end gap-2">

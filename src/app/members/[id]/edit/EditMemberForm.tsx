@@ -30,7 +30,7 @@ export function EditMemberForm({
   }
 
   return (
-    <form onSubmit={submitKeepingValues(action)} className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-6 max-w-3xl">
+    <form onSubmit={submitKeepingValues(action)} className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-6 flex flex-col gap-6 max-w-3xl">
       <MemberFields vglOptions={vglOptions} serviceOptions={serviceOptions} defaultValues={member} showActive />
       <FormError message={state?.error} />
       <div className="flex flex-wrap items-center justify-between gap-2">

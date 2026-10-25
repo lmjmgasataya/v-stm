@@ -7,6 +7,7 @@ import { useToast } from "@/components/toast/ToastContext";
 import { inputCls } from "@/components/form";
 import { MINISTRY_OPTIONS, ministryLabel, ministryList } from "@/lib/constants";
 import { MinistryName } from "@/components/MinistryName";
+import { Chip, matchesMember } from "@/components/checkInParts";
 import { formatTime } from "@/lib/date";
 import { memberDisplayName } from "@/lib/members";
 import { checkIn, undoCheckIn } from "./actions";
@@ -43,12 +44,6 @@ const REFRESH_INTERVAL_MS = 20_000;
 const timeOf = (service: string) => service.split(" - ")[0];
 /** "2PM - Mandurriao" → "Mandurriao" */
 const placeOf = (service: string) => service.split(" - ")[1] ?? "";
-
-function matches(member: RosterMember, tokens: string[]) {
-  const haystack =
-    `${member.firstName} ${member.nickname ?? ""} ${member.lastName} ${member.middleInitial} ${member.mobileNumber} ${member.vglName ?? ""}`.toLowerCase();
-  return tokens.every((t) => haystack.includes(t));
-}
 
 export function CheckInWorkspace({
   groups,
@@ -145,7 +140,7 @@ export function CheckInWorkspace({
     const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
     if (!tokens.length) return inGroup;
     // Searching looks across every service you can see, not just this group
-    return roster.filter((m) => (!ministry || m.ministries.includes(ministry)) && matches(m, tokens));
+    return roster.filter((m) => (!ministry || m.ministries.includes(ministry)) && matchesMember(m, tokens));
   }, [roster, inGroup, query, ministry]);
 
   // Not yet = missing any of the ticked services (so they still need a check-in)
@@ -227,7 +222,7 @@ export function CheckInWorkspace({
             disabled={pending}
             aria-label={`Undo ${timeOf(s)} check-in`}
             title={`Undo ${timeOf(s)} check-in`}
-            className="ml-0.5 text-gray-400 hover:text-red-600 disabled:opacity-50"
+            className="ml-0.5 text-stone-400 hover:text-red-600 disabled:opacity-50"
           >
             ×
           </button>
@@ -238,13 +233,13 @@ export function CheckInWorkspace({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-2xl font-bold text-stm-navy">Check-in{scoped && ` · ${group.name}`}</h1>
-        <p className="text-sm text-gray-500">{todayLabel}</p>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Check-in{scoped && ` · ${group.name}`}</h1>
+        <p className="text-sm text-stone-500">{todayLabel}</p>
       </div>
 
       {groups.length > 1 && (
         <div>
-          <p className="text-sm font-medium text-gray-700 mb-2">Service</p>
+          <p className="text-sm font-medium text-stone-700 mb-2">Service</p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {groups.map((g) => {
               const count = optimisticCheckIns.filter((c) => g.services.includes(c.service)).length;
@@ -255,8 +250,8 @@ export function CheckInWorkspace({
                   onClick={() => chooseGroup(g)}
                   className={`shrink-0 whitespace-nowrap rounded-xl border-2 px-4 py-2.5 text-sm font-semibold transition ${
                     g.name === group.name
-                      ? "bg-stm-navy border-stm-navy text-white shadow-md"
-                      : "bg-white border-gray-200 text-gray-500 hover:border-stm-navy/50 hover:text-stm-navy"
+                      ? "bg-stm-brand border-stm-brand text-white shadow-md"
+                      : "bg-white border-stone-200 text-stone-500 hover:border-stm-brand/50 hover:text-stm-brand"
                   }`}
                 >
                   <span className="block">{g.name}</span>
@@ -269,17 +264,17 @@ export function CheckInWorkspace({
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-4">
+      <div className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-4 flex flex-col gap-4">
         {group.services.length > 1 && (
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-gray-700">Checking in for:</span>
+            <span className="text-sm font-medium text-stone-700">Checking in for:</span>
             {group.services.map((s) => {
               const checked = selected.includes(s);
               return (
                 <label
                   key={s}
                   className={`inline-flex items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-semibold cursor-pointer transition ${
-                    checked ? "border-stm-navy bg-stm-navy/5 text-stm-navy" : "border-gray-200 text-gray-400"
+                    checked ? "border-stm-brand bg-stm-brand/5 text-stm-brand" : "border-stone-200 text-stone-400"
                   }`}
                 >
                   <input
@@ -288,24 +283,24 @@ export function CheckInWorkspace({
                     // The last ticked service can't be unticked
                     disabled={checked && selected.length === 1}
                     onChange={() => toggleService(s)}
-                    className="h-4 w-4 accent-stm-navy"
+                    className="h-4 w-4 accent-stm-brand"
                   />
                   {timeOf(s)}
                 </label>
               );
             })}
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-stone-400">
               {selected.length === group.services.length ? "Serving both" : `Only ${timeOf(selected[0])}`}
             </span>
           </div>
         )}
         <div className="flex flex-wrap items-end gap-x-8 gap-y-2">
           {group.services.map((s) => (
-            <p key={s} className="text-3xl font-bold text-stm-navy">
-              {countFor(s)} <span className="text-base font-medium text-gray-400">checked in · {timeOf(s)}</span>
+            <p key={s} className="text-3xl font-bold text-stm-brand">
+              {countFor(s)} <span className="text-base font-medium text-stone-400">checked in · {timeOf(s)}</span>
             </p>
           ))}
-          <p className="text-sm text-gray-400">{assignedCount} assigned to {group.name}</p>
+          <p className="text-sm text-stone-400">{assignedCount} assigned to {group.name}</p>
         </div>
       </div>
 
@@ -330,8 +325,8 @@ export function CheckInWorkspace({
             </Chip>
           ))}
           {!scoped && (
-            <label className="ml-auto flex items-center gap-2 text-sm text-gray-600">
-              <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} className="h-4 w-4 accent-stm-navy" />
+            <label className="ml-auto flex items-center gap-2 text-sm text-stone-600">
+              <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} className="h-4 w-4 accent-stm-brand" />
               Show members of other services
             </label>
           )}
@@ -339,25 +334,25 @@ export function CheckInWorkspace({
       </div>
 
       {roster.length === 0 ? (
-        <div className="bg-white rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">
-          No active service team members yet. <Link href="/members" className="text-stm-navy underline">Add some</Link> first.
+        <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center text-sm text-stone-500">
+          No active service team members yet. <Link href="/members" className="text-stm-brand underline">Add some</Link> first.
         </div>
       ) : (
         <>
           <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-2">
               Not yet checked in ({remaining})
             </h2>
             {!browsing ? (
-              <p className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-6 text-center text-sm text-gray-500">
+              <p className="rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-6 text-center text-sm text-stone-500">
                 {remaining > 0
                   ? "Type a name above to find someone, or pick a ministry to list its members."
                   : emptyNotYetMessage()}
               </p>
             ) : notYet.length === 0 ? (
-              <p className="text-sm text-gray-400">{emptyNotYetMessage()}</p>
+              <p className="text-sm text-stone-400">{emptyNotYetMessage()}</p>
             ) : (
-              <ul className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+              <ul className="bg-white rounded-2xl border border-stone-200/80 shadow-sm divide-y divide-stone-100">
                 {notYet.map((m) => {
                   const missing = missingFor(m);
                   const partial = missing.length < selected.length;
@@ -378,13 +373,13 @@ export function CheckInWorkspace({
           </section>
 
           <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-2">
               Checked in to {group.services.map(timeOf).join(" & ")} ({done.length})
             </h2>
             {done.length === 0 ? (
-              <p className="text-sm text-gray-400">No check-ins yet.</p>
+              <p className="text-sm text-stone-400">No check-ins yet.</p>
             ) : (
-              <ul className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+              <ul className="bg-white rounded-2xl border border-stone-200/80 shadow-sm divide-y divide-stone-100">
                 {done.map((m) => (
                   <MemberRow key={m.id} member={m} group={group} chips={rowChips(m)} otherServices={otherServices.get(m.id)} />
                 ))}
@@ -399,20 +394,6 @@ export function CheckInWorkspace({
 
 function latest(times: Map<string, string> | undefined): string {
   return times ? [...times.values()].sort().at(-1)! : "";
-}
-
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-        active ? "bg-stm-navy text-white" : "bg-gray-100 text-gray-500 hover:text-stm-navy"
-      }`}
-    >
-      {children}
-    </button>
-  );
 }
 
 function MemberRow({
@@ -439,8 +420,8 @@ function MemberRow({
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0">
-        <p className="font-medium text-gray-900 truncate">{memberDisplayName(member)}</p>
-        <p className="text-xs text-gray-500 truncate">{details.join(" · ") || "—"}</p>
+        <p className="font-medium text-stone-900 truncate">{memberDisplayName(member)}</p>
+        <p className="text-xs text-stone-500 truncate">{details.join(" · ") || "—"}</p>
         {otherServices && (
           <p className="text-xs text-stm-amber truncate">Also checked in today: {otherServices.join(", ")}</p>
         )}

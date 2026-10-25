@@ -7,7 +7,7 @@ export default async function NewUserPage() {
   return (
     <div>
       <Breadcrumbs items={[{ label: "Users", href: "/users" }, { label: "Add user" }]} />
-      <h1 className="text-2xl font-bold text-stm-navy mb-4">Add user</h1>
+      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900 mb-4">Add user</h1>
       <UserForm />
     </div>
   );

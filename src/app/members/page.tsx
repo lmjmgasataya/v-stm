@@ -79,7 +79,7 @@ export default async function MembersPage({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-stm-navy">Service team members</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Service team members</h1>
         {viewer.canManageMembers && (
           <div className="flex gap-2">
             <ImportMembersModal services={viewer.services} scoped={!!viewer.serviceGroup} />
@@ -116,7 +116,7 @@ export default async function MembersPage({
         />
       </div>
 
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-stone-500">
         {rows.length} member{rows.length === 1 ? "" : "s"}
         {filtered && " matching"}
       </p>

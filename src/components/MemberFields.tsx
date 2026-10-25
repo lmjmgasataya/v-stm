@@ -99,8 +99,8 @@ export function MemberFields({
       {showActive && (
         <Section title="Status">
           <input type="hidden" name="isActiveShown" value="1" />
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" name="isActive" defaultChecked={d?.isActive ?? true} className="h-4 w-4 accent-stm-navy" />
+          <label className="flex items-center gap-2 text-sm text-stone-700">
+            <input type="checkbox" name="isActive" defaultChecked={d?.isActive ?? true} className="h-4 w-4 accent-stm-brand" />
             Active — inactive members are hidden from check-in
           </label>
         </Section>
@@ -112,7 +112,7 @@ export function MemberFields({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset className="flex flex-col gap-4">
-      <legend className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">{title}</legend>
+      <legend className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">{title}</legend>
       {children}
     </fieldset>
   );
@@ -135,21 +135,21 @@ function CheckboxGroup({
 }) {
   return (
     <div>
-      <p className="block text-sm font-medium text-gray-700 mb-2">
+      <p className="block text-sm font-medium text-stone-700 mb-2">
         {label} {required && <span className="text-red-500">*</span>}
       </p>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
           <label
             key={option}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 cursor-pointer has-[:checked]:border-stm-navy has-[:checked]:bg-stm-navy/5 has-[:checked]:text-stm-navy"
+            className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-3.5 py-1.5 text-sm text-stone-700 cursor-pointer has-[:checked]:border-stm-brand has-[:checked]:bg-stm-brand/5 has-[:checked]:text-stm-brand"
           >
             <input
               type="checkbox"
               name={name}
               value={option}
               defaultChecked={defaultValues.includes(option)}
-              className="h-4 w-4 accent-stm-navy"
+              className="h-4 w-4 accent-stm-brand"
             />
             {renderLabel(option)}
           </label>

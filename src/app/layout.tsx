@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
 import { getViewer } from "@/lib/access";
 import { logout } from "@/app/login/actions";
+import { BottomNav, SidebarNav } from "@/components/AppNav";
+import { BrandMark, SignOutIcon } from "@/components/icons";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { Toaster } from "@/components/toast/Toaster";
 import "./globals.css";
 
-const geist = Geist({ subsets: ["latin"] });
+const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
 
 export const metadata: Metadata = {
   title: "Service Team",
@@ -16,56 +18,83 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const viewer = await getViewer();
+  const initials = viewer?.name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
-    <html lang="en" className="h-full">
-      <body className={`${geist.className} min-h-full antialiased text-gray-800`}>
+    <html lang="en" className={`h-full ${jakarta.variable}`}>
+      <body className="min-h-full font-sans antialiased text-stone-800">
         <Toaster>
           <NavigationProgress />
-          {viewer && (
-            <header className="print:hidden bg-white border-b border-gray-200 sticky top-0 z-10">
-              <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-                  <Link href="/" className="text-lg font-bold text-stm-navy hover:opacity-80 transition">
-                    Service Team
-                  </Link>
-                  <nav className="flex items-center gap-4 text-sm">
-                    <Link href="/members" className="text-gray-500 hover:text-stm-navy transition">
-                      Members
-                    </Link>
-                    <Link href="/check-in" className="text-gray-500 hover:text-stm-navy transition">
-                      Check-in
-                    </Link>
-                    <Link href="/attendance" className="text-gray-500 hover:text-stm-navy transition">
-                      Attendance
-                    </Link>
-                    {viewer.isSuperAdmin && (
-                      <Link href="/users" className="text-gray-500 hover:text-stm-navy transition">
-                        Users
-                      </Link>
-                    )}
-                  </nav>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-gray-500">
-                    {viewer.name}
-                    <span className="ml-1.5 rounded-full bg-stm-navy/10 px-2 py-0.5 font-semibold text-stm-navy">
-                      {viewer.serviceGroup ?? "All services"}
-                    </span>
+          {viewer ? (
+            <div className="lg:pl-64">
+              {/* Desktop: fixed teal sidebar */}
+              <aside className="hidden lg:flex print:hidden fixed inset-y-0 left-0 z-30 w-64 flex-col bg-stm-brand-dark bg-[radial-gradient(120%_60%_at_0%_0%,rgba(242,107,79,0.18),transparent_60%)] px-4 py-6">
+                <Link href="/" className="flex items-center gap-3 px-2 mb-8">
+                  <BrandMark className="h-10 w-10 text-stm-brand" />
+                  <span className="leading-tight">
+                    <span className="block text-base font-extrabold tracking-tight text-white">Service Team</span>
+                    <span className="block text-xs font-medium text-teal-100/60">Check-in &amp; roster</span>
                   </span>
-                  <form action={logout}>
+                </Link>
+                <SidebarNav isSuperAdmin={viewer.isSuperAdmin} />
+                <div className="mt-auto rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stm-accent text-sm font-bold text-white">
+                      {initials}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-white">{viewer.name}</p>
+                      <p className="truncate text-xs text-teal-100/70">
+                        {viewer.serviceGroup ?? "All services"} · <span className="capitalize">{viewer.role}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <form action={logout} className="mt-3">
                     <button
                       type="submit"
-                      className="text-xs text-gray-400 hover:text-stm-navy underline underline-offset-2 transition"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-teal-50/80 ring-1 ring-white/15 transition hover:bg-white/10 hover:text-white"
                     >
+                      <SignOutIcon className="h-4 w-4" />
                       Sign out
                     </button>
                   </form>
                 </div>
-              </div>
-            </header>
+              </aside>
+
+              {/* Phones/tablets: slim top bar (navigation lives in the bottom tab bar) */}
+              <header className="lg:hidden print:hidden sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-stone-200/80 bg-white/90 px-4 py-2.5 backdrop-blur">
+                <Link href="/" className="flex items-center gap-2.5">
+                  <BrandMark className="h-8 w-8 text-stm-brand" />
+                  <span className="text-sm font-extrabold tracking-tight text-stone-900">Service Team</span>
+                </Link>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-stm-brand/10 px-2.5 py-1 text-xs font-semibold text-stm-brand">
+                    {viewer.serviceGroup ?? "All services"}
+                  </span>
+                  <form action={logout}>
+                    <button
+                      type="submit"
+                      aria-label="Sign out"
+                      title="Sign out"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
+                    >
+                      <SignOutIcon className="h-4.5 w-4.5" />
+                    </button>
+                  </form>
+                </div>
+              </header>
+
+              <main className="mx-auto max-w-6xl px-4 pt-6 pb-28 sm:px-6 lg:px-10 lg:py-10">{children}</main>
+              <BottomNav isSuperAdmin={viewer.isSuperAdmin} />
+            </div>
+          ) : (
+            <main>{children}</main>
           )}
-          <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
         </Toaster>
       </body>
     </html>

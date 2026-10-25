@@ -30,7 +30,7 @@ const PREVIEW_ROW_LIMIT = 300; // rows rendered in the review table
 
 const STATUS_STYLES: Record<ImportPreviewRow["status"], { label: string; cls: string }> = {
   new: { label: "Import", cls: "bg-stm-green/10 text-stm-green" },
-  duplicate: { label: "Skip", cls: "bg-gray-100 text-gray-500" },
+  duplicate: { label: "Skip", cls: "bg-stone-100 text-stone-500" },
   error: { label: "Error", cls: "bg-red-50 text-red-600" },
 };
 
@@ -142,7 +142,7 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
             />
           ) : (
             <>
-              <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
+              <ol className="list-decimal list-inside space-y-2 text-sm text-stone-600">
                 <li>
                   Upload an Excel (.xlsx) file, or a .csv / .txt file with columns separated by commas or tabs. The header
                   row is detected automatically — you can check and fix the columns before anything is saved.
@@ -151,7 +151,7 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
                   Recognized headers (any order):
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {[...MEMBER_IMPORT_HEADERS, "Full Name"].map((h) => (
-                      <code key={h} className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700">
+                      <code key={h} className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-700">
                         {h}
                       </code>
                     ))}
@@ -168,7 +168,7 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
                   <button
                     type="button"
                     onClick={() => downloadCsv("stm-import-template.csv", buildMemberImportTemplate())}
-                    className="font-semibold text-stm-navy hover:underline"
+                    className="font-semibold text-stm-brand hover:underline"
                   >
                     Download template
                   </button>
@@ -182,7 +182,7 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
                   void handleFile(e.target.files?.[0]);
                   e.target.value = ""; // allow picking the same file again
                 }}
-                className="mt-4 w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-stm-navy file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
+                className="mt-4 w-full text-sm text-stone-600 file:mr-3 file:rounded-lg file:border-0 file:bg-stm-brand file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
               />
               <div className="mt-3">
                 <FormError message={error} />
@@ -243,10 +243,10 @@ function ReviewStep({
   return (
     <div className="flex flex-col gap-5 text-sm">
       <div className="flex flex-wrap items-end gap-3">
-        <p className="mr-auto text-gray-600">
-          <span className="font-semibold text-gray-800">{fileName}</span> · {rows.length} row{rows.length === 1 ? "" : "s"}
+        <p className="mr-auto text-stone-600">
+          <span className="font-semibold text-stone-800">{fileName}</span> · {rows.length} row{rows.length === 1 ? "" : "s"}
         </p>
-        <label className="flex items-center gap-2 text-gray-600">
+        <label className="flex items-center gap-2 text-stone-600">
           Header row
           <select
             value={mapping.headerRow ?? ""}
@@ -264,26 +264,26 @@ function ReviewStep({
       </div>
 
       <section>
-        <h4 className="mb-2 font-semibold text-gray-700">Columns</h4>
-        <div className="max-h-64 overflow-auto rounded-lg border border-gray-200">
+        <h4 className="mb-2 font-semibold text-stone-700">Columns</h4>
+        <div className="max-h-64 overflow-auto rounded-lg border border-stone-200">
           <table className="w-full">
-            <thead className="sticky top-0 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+            <thead className="sticky top-0 bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
               <tr>
                 <th className="px-3 py-2">In your file</th>
                 <th className="px-3 py-2">Example</th>
                 <th className="px-3 py-2">Import as</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-stone-100">
               {mapping.columns.map((field, i) => (
                 <tr key={i}>
-                  <td className="px-3 py-1.5 font-medium text-gray-800">{header?.[i] || `Column ${i + 1}`}</td>
-                  <td className="max-w-48 truncate px-3 py-1.5 text-gray-500">{firstData[i] || "—"}</td>
+                  <td className="px-3 py-1.5 font-medium text-stone-800">{header?.[i] || `Column ${i + 1}`}</td>
+                  <td className="max-w-48 truncate px-3 py-1.5 text-stone-500">{firstData[i] || "—"}</td>
                   <td className="px-3 py-1.5">
                     <select
                       value={field ?? ""}
                       onChange={(e) => onColumnChange(i, (e.target.value || null) as MemberColumn | null)}
-                      className={`${inputCls} py-1.5 ${field ? "" : "text-gray-400"}`}
+                      className={`${inputCls} py-1.5 ${field ? "" : "text-stone-400"}`}
                     >
                       <option value="">Don’t import</option>
                       {(Object.keys(MEMBER_COLUMN_LABELS) as MemberColumn[]).map((c) => (
@@ -302,7 +302,7 @@ function ReviewStep({
 
       <section>
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <h4 className="mr-2 font-semibold text-gray-700">Records</h4>
+          <h4 className="mr-2 font-semibold text-stone-700">Records</h4>
           {(
             [
               ["all", `All ${allRows.length}`],
@@ -317,17 +317,17 @@ function ReviewStep({
               onClick={() => setFilter(key)}
               aria-pressed={filter === key}
               className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                filter === key ? "bg-stm-navy text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                filter === key ? "bg-stm-brand text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:ring-stm-brand/40"
               }`}
             >
               {label}
             </button>
           ))}
-          {checking && <span className="text-xs text-gray-400">Checking…</span>}
+          {checking && <span className="text-xs text-stone-400">Checking…</span>}
         </div>
-        <div className={`max-h-80 overflow-auto rounded-lg border border-gray-200 ${checking ? "opacity-60" : ""}`}>
+        <div className={`max-h-80 overflow-auto rounded-lg border border-stone-200 ${checking ? "opacity-60" : ""}`}>
           <table className="w-full">
-            <thead className="sticky top-0 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+            <thead className="sticky top-0 bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
               <tr>
                 <th className="px-3 py-2">Row</th>
                 <th className="px-3 py-2">Name</th>
@@ -338,19 +338,19 @@ function ReviewStep({
                 <th className="px-3 py-2">Result</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-stone-100">
               {shown.slice(0, PREVIEW_ROW_LIMIT).map((r) => (
                 <tr key={r.row} className="align-top">
-                  <td className="px-3 py-1.5 text-gray-400">{r.row}</td>
-                  <td className="px-3 py-1.5 text-gray-800 whitespace-nowrap">
+                  <td className="px-3 py-1.5 text-stone-400">{r.row}</td>
+                  <td className="px-3 py-1.5 text-stone-800 whitespace-nowrap">
                     {r.lastName || "—"}, {r.firstName || "—"}
                     {r.middleInitial && ` ${r.middleInitial}.`}
-                    {r.nickname && <span className="text-gray-400"> ({r.nickname})</span>}
+                    {r.nickname && <span className="text-stone-400"> ({r.nickname})</span>}
                   </td>
-                  <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{r.mobileNumber || "—"}</td>
-                  <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{r.serviceAttending ?? "—"}</td>
-                  <td className="px-3 py-1.5 text-gray-600">{ministryList(r.ministries) || "—"}</td>
-                  <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">
+                  <td className="px-3 py-1.5 text-stone-600 whitespace-nowrap">{r.mobileNumber || "—"}</td>
+                  <td className="px-3 py-1.5 text-stone-600 whitespace-nowrap">{r.serviceAttending ?? "—"}</td>
+                  <td className="px-3 py-1.5 text-stone-600">{ministryList(r.ministries) || "—"}</td>
+                  <td className="px-3 py-1.5 text-stone-600 whitespace-nowrap">
                     {r.vglName ?? "—"}
                     {r.vglName &&
                       (r.vglLinked ? (
@@ -367,7 +367,7 @@ function ReviewStep({
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLES[r.status].cls}`}>
                       {STATUS_STYLES[r.status].label}
                     </span>
-                    {r.message && <span className="ml-2 text-xs text-gray-500">{r.message}</span>}
+                    {r.message && <span className="ml-2 text-xs text-stone-500">{r.message}</span>}
                     {r.status === "new" &&
                       r.warnings.map((w) => (
                         <p key={w} className="mt-0.5 text-xs text-stm-amber">
@@ -379,7 +379,7 @@ function ReviewStep({
               ))}
               {preview && shown.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-gray-400">
+                  <td colSpan={7} className="px-3 py-6 text-center text-stone-400">
                     No records.
                   </td>
                 </tr>
@@ -388,17 +388,17 @@ function ReviewStep({
           </table>
         </div>
         {shown.length > PREVIEW_ROW_LIMIT && (
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-stone-400">
             Showing the first {PREVIEW_ROW_LIMIT} of {shown.length}.
           </p>
         )}
       </section>
 
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <p className="mr-auto text-gray-600">
+        <p className="mr-auto text-stone-600">
           {preview && (
             <>
-              <span className="font-semibold text-gray-800">{counts.new}</span> will be added
+              <span className="font-semibold text-stone-800">{counts.new}</span> will be added
               {counts.duplicate > 0 && <>, {counts.duplicate} already here</>}
               {counts.error > 0 && <span className="text-red-600">, {counts.error} with errors</span>}.
             </>
@@ -423,9 +423,9 @@ function ReviewStep({
 function ResultStep({ result, onClose }: { result: ImportSummary; onClose: () => void }) {
   return (
     <>
-      <div className="rounded-lg bg-gray-50 p-3 text-sm">
+      <div className="rounded-lg bg-stone-50 p-3 text-sm">
         <p className="font-semibold text-stm-green">{result.imported} member(s) imported.</p>
-        {result.duplicates > 0 && <p className="text-gray-600">{result.duplicates} skipped — already a member.</p>}
+        {result.duplicates > 0 && <p className="text-stone-600">{result.duplicates} skipped — already a member.</p>}
         {result.errors > 0 && <p className="text-red-600">{result.errors} skipped — missing name or service.</p>}
       </div>
       <div className="mt-5 flex justify-end">

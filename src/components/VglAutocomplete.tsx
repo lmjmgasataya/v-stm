@@ -74,7 +74,7 @@ export function VglAutocomplete({
 
   return (
     <div className="relative">
-      <label htmlFor="vglName" className="block text-sm font-medium text-gray-700 mb-1">
+      <label htmlFor="vglName" className="block text-sm font-medium text-stone-700 mb-1">
         VGL (Victory Group Leader)
       </label>
       <input
@@ -106,7 +106,7 @@ export function VglAutocomplete({
         <ul
           id="vgl-suggestions"
           role="listbox"
-          className="absolute z-20 mt-1 w-full max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+          className="absolute z-20 mt-1 w-full max-h-72 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-lg"
         >
           {suggestions.map((option, i) => (
             <li
@@ -116,10 +116,10 @@ export function VglAutocomplete({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => choose(option)}
               onMouseEnter={() => setHighlight(i)}
-              className={`cursor-pointer px-3 py-2 text-sm ${i === highlight ? "bg-stm-navy/10" : ""}`}
+              className={`cursor-pointer px-3 py-2 text-sm ${i === highlight ? "bg-stm-brand/10" : ""}`}
             >
-              <p className="font-medium text-gray-900">{option.name}</p>
-              {option.detail && <p className="text-xs text-gray-500">{option.detail}</p>}
+              <p className="font-medium text-stone-900">{option.name}</p>
+              {option.detail && <p className="text-xs text-stone-500">{option.detail}</p>}
             </li>
           ))}
         </ul>
@@ -131,7 +131,7 @@ export function VglAutocomplete({
         ) : text.trim() ? (
           <span className="text-stm-amber">Not picked from the VGL list — will be saved as typed.</span>
         ) : (
-          <span className="text-gray-400">Pick from v-1&apos;s VGL list, or type a name.</span>
+          <span className="text-stone-400">Pick from v-1&apos;s VGL list, or type a name.</span>
         )}
       </p>
     </div>

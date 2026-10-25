@@ -34,7 +34,7 @@ export function SearchBox({
       placeholder={placeholder}
       value={value}
       onChange={(e) => handleChange(e.target.value)}
-      className="w-full max-w-xs rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stm-navy/40 focus:border-transparent"
+      className="w-full max-w-xs rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm shadow-xs placeholder:text-stone-400 transition focus:outline-none focus:ring-4 focus:ring-stm-brand/15 focus:border-stm-brand"
     />
   );
 }
