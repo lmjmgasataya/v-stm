@@ -4,8 +4,8 @@ import { ministryLabel } from "@/lib/constants";
 import { formatDateString, isDateString, manilaDateString } from "@/lib/date";
 import { NO_MINISTRY, getMinistryServiceTable, getServiceDates } from "@/lib/reports";
 import { MinistryName } from "@/components/MinistryName";
+import { secondaryBtnCls } from "@/components/form";
 import { DateSelect } from "./DateSelect";
-import { DownloadCsvButton } from "./DownloadCsvButton";
 
 /** "9AM - Mandurriao" → ["9AM", "Mandurriao"] */
 const splitService = (s: string) => [s.split(" - ")[0], s.split(" - ")[1] ?? ""] as const;
@@ -26,11 +26,6 @@ export default async function MinistryServiceReportPage({ searchParams }: { sear
   const newer = index === -1 ? [...dates].reverse().find((d) => d.date > date) : dates[index - 1];
 
   const max = Math.max(1, ...table.rows.flatMap((r) => r.counts));
-  const csvRows: (string | number)[][] = [
-    ["Ministry", ...table.services, "Total"],
-    ...table.rows.map((r) => [r.ministry, ...r.counts, r.total]),
-    ["Total STMs", ...table.serviceTotals, table.total],
-  ];
 
   const navCls =
     "flex h-10 w-10 items-center justify-center rounded-full bg-white text-stone-600 ring-1 ring-stone-200 transition hover:text-stm-brand hover:ring-stm-brand/40";
@@ -54,7 +49,14 @@ export default async function MinistryServiceReportPage({ searchParams }: { sear
           <span className={`${navCls} opacity-40`} aria-hidden="true">›</span>
         )}
         <div className="ml-auto">
-          <DownloadCsvButton filename={`stm-ministry-by-service-${date}.csv`} rows={csvRows} disabled={table.total === 0} />
+          <a
+            href={`/reports/export?date=${date}`}
+            download
+            aria-disabled={table.total === 0}
+            className={`${secondaryBtnCls} ${table.total === 0 ? "pointer-events-none opacity-50" : ""}`}
+          >
+            Download Excel
+          </a>
         </div>
       </div>
 
