@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   AttendanceIcon,
   CheckInIcon,
-  DevopsIcon,
   EventsIcon,
   HomeIcon,
   MembersIcon,
@@ -25,7 +24,6 @@ const ITEMS = [
   { href: "/reports", label: "Reports", Icon: ReportsIcon },
   { href: "/users", label: "Users", Icon: UsersIcon, superAdminOnly: true },
   { href: "/settings", label: "Settings", Icon: SettingsIcon, superAdminOnly: true },
-  { href: "/devops-admin", label: "DevOps", Icon: DevopsIcon, superAdminOnly: true },
 ];
 
 function useIsActive() {

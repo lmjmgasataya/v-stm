@@ -80,14 +80,6 @@ export const SettingsIcon = (p: IconProps) => (
   </Svg>
 );
 
-export const DevopsIcon = (p: IconProps) => (
-  <Svg {...p}>
-    <ellipse cx="12" cy="5.5" rx="7.5" ry="2.5" />
-    <path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13" />
-    <path d="M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5" />
-  </Svg>
-);
-
 export const MoreIcon = (p: IconProps) => (
   <Svg {...p}>
     <circle cx="5" cy="12" r="1.2" fill="currentColor" />
