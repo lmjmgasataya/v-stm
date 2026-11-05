@@ -37,8 +37,8 @@ interface Group {
 
 type OptimisticUpdate = { type: "add"; checkIns: TodayCheckIn[] } | { type: "remove"; memberId: number; service: string };
 
-// Pull in check-ins made from other devices
-const REFRESH_INTERVAL_MS = 20_000;
+// Pull in check-ins made from other devices (each refresh re-renders the page on the server, so keep it sparse)
+const REFRESH_INTERVAL_MS = 60_000;
 
 /** "2PM - Mandurriao" → "2PM" */
 const timeOf = (service: string) => service.split(" - ")[0];

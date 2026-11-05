@@ -20,8 +20,8 @@ interface EventCheckIn {
 
 type OptimisticUpdate = { type: "add"; checkIn: EventCheckIn } | { type: "remove"; memberId: number };
 
-// Pull in check-ins made from other devices
-const REFRESH_INTERVAL_MS = 20_000;
+// Pull in check-ins made from other devices (each refresh re-renders the page on the server, so keep it sparse)
+const REFRESH_INTERVAL_MS = 60_000;
 
 /**
  * Check-in for a custom event: any active member from every service (even for service-group
