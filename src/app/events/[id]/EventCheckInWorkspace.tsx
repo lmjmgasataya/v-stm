@@ -20,6 +20,10 @@ interface EventCheckIn {
 
 type OptimisticUpdate = { type: "add"; checkIn: EventCheckIn } | { type: "remove"; memberId: number };
 
+function applyUpdate(rows: EventCheckIn[], update: OptimisticUpdate): EventCheckIn[] {
+  return update.type === "add" ? [...rows, update.checkIn] : rows.filter((c) => c.memberId !== update.memberId);
+}
+
 // Pull in check-ins made from other devices (each refresh re-renders the page on the server, so keep it sparse)
 const REFRESH_INTERVAL_MS = 60_000;
 
@@ -41,9 +45,14 @@ export function EventCheckInWorkspace({
   const [ministry, setMinistry] = useState("");
   const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
-  const [optimistic, applyOptimistic] = useOptimistic(checkIns, (rows, update: OptimisticUpdate) =>
-    update.type === "add" ? [...rows, update.checkIn] : rows.filter((c) => c.memberId !== update.memberId)
-  );
+  // Check-ins/undos confirmed since the last server render (the actions don't re-render the
+  // page). A new `checkIns` from the periodic refresh already includes them, so they reset then.
+  const [confirmed, setConfirmed] = useState({ base: checkIns, rows: checkIns });
+  const currentCheckIns = confirmed.base === checkIns ? confirmed.rows : checkIns;
+  function keepResult(update: OptimisticUpdate) {
+    setConfirmed((c) => ({ base: checkIns, rows: applyUpdate(c.base === checkIns ? c.rows : checkIns, update) }));
+  }
+  const [optimistic, applyOptimistic] = useOptimistic(currentCheckIns, applyUpdate);
   const { showToast } = useToast();
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -74,6 +83,7 @@ export function EventCheckInWorkspace({
     startTransition(async () => {
       applyOptimistic({ type: "add", checkIn: { memberId: member.id, checkedInAt: new Date().toISOString() } });
       const result = await checkInToEvent(eventId, member.id);
+      if (result.checkedInAt) keepResult({ type: "add", checkIn: { memberId: member.id, checkedInAt: result.checkedInAt } });
       if (result.ok) {
         showToast("success", `${member.firstName} ${member.lastName} checked in.`);
         // Back to a clean slate for the next person: no search, All ministries
@@ -91,6 +101,7 @@ export function EventCheckInWorkspace({
     startTransition(async () => {
       applyOptimistic({ type: "remove", memberId: member.id });
       await undoEventCheckIn(eventId, member.id);
+      keepResult({ type: "remove", memberId: member.id });
       showToast("success", `Check-in undone for ${member.firstName} ${member.lastName}.`);
     });
   }

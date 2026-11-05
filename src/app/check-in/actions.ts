@@ -1,7 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns, members } from "@/db/schema";
 import { canSeeService, memberScope, requireViewer } from "@/lib/access";
@@ -12,16 +11,14 @@ export type CheckInResult =
       ok: true;
       /** Newly recorded check-ins. */
       checkedIn: { service: string; checkedInAt: string }[];
-      /** Services the member was already checked in to today (kept as they were). */
-      already: string[];
+      /** Services the member was already checked in to today (kept as they were), with their time. */
+      already: { service: string; checkedInAt: string }[];
     }
   | { ok: false; error: string };
 
-function revalidateAttendance() {
-  revalidatePath("/check-in");
-  revalidatePath("/attendance");
-  revalidatePath("/");
-}
+// No revalidatePath here: inside a Server Action it re-renders the whole check-in page on the
+// server for every tap. CheckInWorkspace keeps the result itself; /attendance and / are
+// dynamic, so they're fresh on the next visit.
 
 /** Checks a member in to one or more services today (Manila date) — e.g. both 2PM and 4PM. */
 export async function checkIn(memberId: number, services: string[]): Promise<CheckInResult> {
@@ -46,13 +43,18 @@ export async function checkIn(memberId: number, services: string[]): Promise<Che
     .onConflictDoNothing()
     .returning({ service: checkIns.service, checkedInAt: checkIns.checkedInAt });
 
-  revalidateAttendance();
-
   const done = new Set(inserted.map((r) => r.service));
+  const alreadyServices = wanted.filter((s) => !done.has(s));
+  const already = alreadyServices.length
+    ? await db
+        .select({ service: checkIns.service, checkedInAt: checkIns.checkedInAt })
+        .from(checkIns)
+        .where(and(eq(checkIns.memberId, memberId), eq(checkIns.serviceDate, serviceDate), inArray(checkIns.service, alreadyServices)))
+    : [];
   return {
     ok: true,
     checkedIn: inserted.map((r) => ({ service: r.service, checkedInAt: r.checkedInAt.toISOString() })),
-    already: wanted.filter((s) => !done.has(s)),
+    already: already.map((r) => ({ service: r.service, checkedInAt: r.checkedInAt.toISOString() })),
   };
 }
 
@@ -65,6 +67,4 @@ export async function undoCheckIn(memberId: number, service: string) {
     .where(
       and(eq(checkIns.memberId, memberId), eq(checkIns.service, service), eq(checkIns.serviceDate, manilaDateString()))
     );
-
-  revalidateAttendance();
 }

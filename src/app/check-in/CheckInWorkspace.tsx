@@ -37,6 +37,12 @@ interface Group {
 
 type OptimisticUpdate = { type: "add"; checkIns: TodayCheckIn[] } | { type: "remove"; memberId: number; service: string };
 
+function applyUpdate(rows: TodayCheckIn[], update: OptimisticUpdate): TodayCheckIn[] {
+  return update.type === "add"
+    ? [...rows, ...update.checkIns]
+    : rows.filter((c) => !(c.memberId === update.memberId && c.service === update.service));
+}
+
 // Pull in check-ins made from other devices (each refresh re-renders the page on the server, so keep it sparse)
 const REFRESH_INTERVAL_MS = 60_000;
 
@@ -70,11 +76,14 @@ export function CheckInWorkspace({
   const [showAll, setShowAll] = useState(false);
   const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
-  const [optimisticCheckIns, applyOptimistic] = useOptimistic(checkIns, (rows, update: OptimisticUpdate) =>
-    update.type === "add"
-      ? [...rows, ...update.checkIns]
-      : rows.filter((c) => !(c.memberId === update.memberId && c.service === update.service))
-  );
+  // Check-ins/undos confirmed since the last server render (the actions don't re-render the
+  // page). A new `checkIns` from the periodic refresh already includes them, so they reset then.
+  const [confirmed, setConfirmed] = useState({ base: checkIns, rows: checkIns });
+  const currentCheckIns = confirmed.base === checkIns ? confirmed.rows : checkIns;
+  function keepResult(update: OptimisticUpdate) {
+    setConfirmed((c) => ({ base: checkIns, rows: applyUpdate(c.base === checkIns ? c.rows : checkIns, update) }));
+  }
+  const [optimisticCheckIns, applyOptimistic] = useOptimistic(currentCheckIns, applyUpdate);
   const { showToast } = useToast();
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -164,6 +173,12 @@ export function CheckInWorkspace({
       const now = new Date().toISOString();
       applyOptimistic({ type: "add", checkIns: services.map((service) => ({ memberId: member.id, service, checkedInAt: now })) });
       const result = await checkIn(member.id, services);
+      if (result.ok) {
+        keepResult({
+          type: "add",
+          checkIns: [...result.checkedIn, ...result.already].map((c) => ({ memberId: member.id, ...c })),
+        });
+      }
       if (!result.ok) {
         showToast("warning", `${member.firstName} ${member.lastName}: ${result.error}`);
       } else if (result.checkedIn.length === 0) {
@@ -183,6 +198,7 @@ export function CheckInWorkspace({
     startTransition(async () => {
       applyOptimistic({ type: "remove", memberId: member.id, service });
       await undoCheckIn(member.id, service);
+      keepResult({ type: "remove", memberId: member.id, service });
       showToast("success", `${timeOf(service)} check-in undone for ${member.firstName} ${member.lastName}.`);
     });
   }

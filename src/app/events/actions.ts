@@ -71,7 +71,12 @@ export async function deleteEvent(eventId: number) {
   redirect(withToast("/events", "success", "Event deleted."));
 }
 
-export type EventCheckInResult = { ok: true; checkedInAt: string } | { ok: false; error: string };
+/** On "already checked in", `checkedInAt` is the existing check-in, so the page can show it. */
+export type EventCheckInResult = { ok: true; checkedInAt: string } | { ok: false; error: string; checkedInAt?: string };
+
+// Event check-in/undo don't revalidateEvents(): revalidatePath inside a Server Action re-renders
+// the whole event check-in page on the server for every tap. EventCheckInWorkspace keeps the
+// result itself; the other pages are dynamic, so they're fresh on the next visit.
 
 /** Any active member, from any service — events aren't limited by the viewer's service group. */
 async function isActiveMember(memberId: number) {
@@ -97,13 +102,17 @@ export async function checkInToEvent(eventId: number, memberId: number): Promise
     .onConflictDoNothing()
     .returning({ checkedInAt: eventCheckIns.checkedInAt });
 
-  revalidateEvents();
-  if (!row) return { ok: false, error: "Already checked in to this event." };
+  if (!row) {
+    const [existing] = await db
+      .select({ checkedInAt: eventCheckIns.checkedInAt })
+      .from(eventCheckIns)
+      .where(and(eq(eventCheckIns.eventId, eventId), eq(eventCheckIns.memberId, memberId)));
+    return { ok: false, error: "Already checked in to this event.", checkedInAt: existing?.checkedInAt.toISOString() };
+  }
   return { ok: true, checkedInAt: row.checkedInAt.toISOString() };
 }
 
 export async function undoEventCheckIn(eventId: number, memberId: number) {
   await requireViewer();
   await db.delete(eventCheckIns).where(and(eq(eventCheckIns.eventId, eventId), eq(eventCheckIns.memberId, memberId)));
-  revalidateEvents();
 }
