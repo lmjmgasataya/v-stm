@@ -93,6 +93,9 @@ This app **reuses v-1's Supabase database** (as v-4-events does). Every table th
 
 **Path alias:** `@/*` maps to `src/*`.
 
+### Deployment region
+The database is Supabase **ap-south-1 (Mumbai)**, so `vercel.json` pins functions to `regions: ["bom1"]` (Vercel's Mumbai region), the same as v-1. Keep them matched — every page does several queries, and a cross-region hop adds latency to each one.
+
 ### Environment variables
 - `DATABASE_URL` — pooled connection (runtime); same database as v-1
 - `DATABASE_URL_UNPOOLED` — direct connection (drizzle-kit)
