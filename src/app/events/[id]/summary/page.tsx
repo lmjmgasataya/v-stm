@@ -1,28 +1,61 @@
 import { requireViewer } from "@/lib/access";
 import { getEventOrNotFound } from "@/lib/events";
-import { getEventSummary, type SummaryCounts } from "@/lib/event-people";
+import { getEventSummary } from "@/lib/event-people";
+import {
+  SUMMARY_GROUP_LABELS,
+  TINT_CLASSES,
+  summaryColumns,
+  type SummaryColumn,
+  type SummaryColumnGroup,
+} from "@/lib/event-summary-columns";
 import { MinistryName } from "@/components/MinistryName";
 import { StatCard } from "@/components/StatCard";
-
-const COLUMNS: { key: keyof SummaryCounts; label: string; preRegOnly?: boolean }[] = [
-  { key: "invited", label: "Invited", preRegOnly: true },
-  { key: "willAttend", label: "Will attend", preRegOnly: true },
-  { key: "wontAttend", label: "Won't attend", preRegOnly: true },
-  { key: "checkedIn", label: "Checked in", preRegOnly: true },
-  { key: "walkIns", label: "Walk-ins", preRegOnly: true },
-  { key: "present", label: "Total present" },
-];
+import { secondaryBtnCls } from "@/components/form";
 
 const numCls = "px-3 py-2 text-right tabular-nums";
+
+/** Classes for a value cell; `strong` = subtotal/total rows (zeros stay readable there). */
+function cellCls(c: SummaryColumn, value: number, strong = false) {
+  const tint = c.tint && TINT_CLASSES[c.tint];
+  if (tint) return `${numCls} ${tint.bg} ${value || strong ? tint.text : tint.zero}`;
+  return `${numCls} ${value || strong ? "text-stone-800" : "text-stone-300"}`;
+}
+
+function headCls(c: SummaryColumn) {
+  const tint = c.tint && TINT_CLASSES[c.tint];
+  return `px-3 py-2 text-right font-semibold whitespace-nowrap ${tint ? `${tint.bg} ${tint.head}` : ""}`;
+}
+
+/** Consecutive columns of the same group → one header cell spanning them */
+function groupSpans(columns: SummaryColumn[]): { group: SummaryColumnGroup; span: number }[] {
+  const spans: { group: SummaryColumnGroup; span: number }[] = [];
+  for (const c of columns) {
+    const last = spans.at(-1);
+    if (last?.group === c.group) last.span++;
+    else spans.push({ group: c.group, span: 1 });
+  }
+  return spans;
+}
 
 export default async function EventSummaryPage({ params }: { params: Promise<{ id: string }> }) {
   await requireViewer();
   const event = await getEventOrNotFound((await params).id);
   const { sections, grandTotal, byService } = await getEventSummary(event.id);
-  const columns = COLUMNS.filter((c) => event.preRegistration || !c.preRegOnly);
+  const columns = summaryColumns(event.preRegistration);
+  const hasData = sections.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex justify-end -mb-2">
+        <a
+          href={`/events/${event.id}/summary/export`}
+          aria-disabled={!hasData}
+          className={`${secondaryBtnCls} ${hasData ? "" : "pointer-events-none opacity-50"}`}
+        >
+          Download Excel
+        </a>
+      </div>
+
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {event.preRegistration && (
           <StatCard label="Will attend" value={grandTotal.willAttend} hint={`of ${grandTotal.invited} invited`} />
@@ -40,10 +73,32 @@ export default async function EventSummaryPage({ params }: { params: Promise<{ i
         <div className="bg-white rounded-2xl border border-stone-200/80 shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
+              {event.preRegistration && (
+                // RSVP (before the event) vs At the door (the night itself)
+                <tr>
+                  <th rowSpan={2} className="px-3 py-2 text-left font-semibold align-bottom">
+                    Group
+                  </th>
+                  {groupSpans(columns).map(({ group, span }) => (
+                    <th
+                      key={group}
+                      colSpan={span}
+                      className={`px-3 pt-2 pb-1 text-center text-[11px] font-bold tracking-wider text-stone-600 border-b border-stone-200 ${
+                        group === "door" ? "border-l-2 border-l-stone-300" : ""
+                      }`}
+                    >
+                      {SUMMARY_GROUP_LABELS[group]}
+                    </th>
+                  ))}
+                </tr>
+              )}
               <tr>
-                <th className="px-3 py-2 text-left font-semibold">Group</th>
-                {columns.map((c) => (
-                  <th key={c.key} className="px-3 py-2 text-right font-semibold whitespace-nowrap">
+                {!event.preRegistration && <th className="px-3 py-2 text-left font-semibold">Group</th>}
+                {columns.map((c, i) => (
+                  <th
+                    key={c.key}
+                    className={`${headCls(c)} ${i > 0 && c.group !== columns[i - 1].group && c.tint !== "total" ? "border-l-2 border-l-stone-300" : ""}`}
+                  >
                     {c.label}
                   </th>
                 ))}
@@ -62,7 +117,7 @@ export default async function EventSummaryPage({ params }: { params: Promise<{ i
                       <MinistryName ministry={row.label} />
                     </td>
                     {columns.map((c) => (
-                      <td key={c.key} className={`${numCls} ${row[c.key] ? "text-stone-800" : "text-stone-300"}`}>
+                      <td key={c.key} className={`${cellCls(c, row[c.key])} ${divider(c, columns)}`}>
                         {row[c.key]}
                       </td>
                     ))}
@@ -72,7 +127,7 @@ export default async function EventSummaryPage({ params }: { params: Promise<{ i
                   <tr className="border-t border-stone-200 bg-stone-50/60 font-semibold">
                     <td className="px-3 py-2 text-stone-700">Subtotal</td>
                     {columns.map((c) => (
-                      <td key={c.key} className={`${numCls} text-stone-800`}>
+                      <td key={c.key} className={`${cellCls(c, section.total[c.key], true)} ${divider(c, columns)}`}>
                         {section.total[c.key]}
                       </td>
                     ))}
@@ -84,7 +139,7 @@ export default async function EventSummaryPage({ params }: { params: Promise<{ i
               <tr>
                 <td className="px-3 py-2.5 text-stone-900">Grand total</td>
                 {columns.map((c) => (
-                  <td key={c.key} className={`${numCls} text-stone-900`}>
+                  <td key={c.key} className={`${cellCls(c, grandTotal[c.key], true)} ${divider(c, columns)} font-bold py-2.5`}>
                     {grandTotal[c.key]}
                   </td>
                 ))}
@@ -151,6 +206,12 @@ export default async function EventSummaryPage({ params }: { params: Promise<{ i
   );
 }
 
+/** Divider at the start of the "At the door" group (the total column has its own) */
+function divider(c: SummaryColumn, columns: SummaryColumn[]) {
+  const i = columns.indexOf(c);
+  return i > 0 && c.group !== columns[i - 1].group && c.tint !== "total" ? "border-l-2 border-l-stone-300" : "";
+}
+
 function SubHeads({ preRegistration }: { preRegistration: boolean }) {
   return (
     <>
@@ -164,7 +225,7 @@ function Cells({ cell, preRegistration }: { cell: { willAttend: number; present:
   return (
     <>
       {preRegistration && <td className={`${numCls} ${cell.willAttend ? "" : "text-stone-300"}`}>{cell.willAttend}</td>}
-      <td className={`${numCls} ${cell.present ? "" : "text-stone-300"}`}>{cell.present}</td>
+      <td className={`${numCls} font-bold ${cell.present ? "" : "text-stone-300"}`}>{cell.present}</td>
     </>
   );
 }
