@@ -41,10 +41,13 @@ const displayName = (p: EventPerson) => (p.lastName ? memberDisplayName(p) : `${
 export function RegistrationEditor({
   eventId,
   people,
+  outside,
   checkIns,
 }: {
   eventId: number;
   people: EventPerson[];
+  /** Keys of people on the list who aren't in the event's invited services/groups */
+  outside: string[];
   checkIns: EventPersonCheckIn[];
 }) {
   const [rsvp, setRsvp] = useState(() => new Map(people.map((p) => [p.key, p.registered])));
@@ -56,6 +59,7 @@ export function RegistrationEditor({
   const [, startTransition] = useTransition();
   const { showToast } = useToast();
   const checkedIn = useMemo(() => new Map(checkIns.map((c) => [c.key, c])), [checkIns]);
+  const outsideSet = useMemo(() => new Set(outside), [outside]);
 
   const statusOf = (p: EventPerson) => rsvp.get(p.key) ?? null;
   const visible = useMemo(() => {
@@ -146,7 +150,11 @@ export function RegistrationEditor({
         </div>
       </div>
 
-      {visible.length === 0 ? (
+      {people.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-6 text-center text-sm text-stone-500">
+          No one is invited yet — choose who&apos;s invited on the event&apos;s edit page.
+        </p>
+      ) : visible.length === 0 ? (
         <p className="text-sm text-stone-400">No one matches.</p>
       ) : (
         <ul className="bg-white rounded-2xl border border-stone-200/80 shadow-sm divide-y divide-stone-100">
@@ -170,6 +178,7 @@ export function RegistrationEditor({
                       .join(" · ")}
                   </p>
                   {c && <p className="text-xs text-stm-green">Checked in{c.isWalkIn ? " (walk-in)" : ""}</p>}
+                  {outsideSet.has(p.key) && <p className="text-xs text-stm-amber">Not in who&apos;s invited — set to — to remove</p>}
                 </div>
                 <div
                   role="radiogroup"

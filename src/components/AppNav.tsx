@@ -32,11 +32,11 @@ const ITEMS: NavItem[] = [
   { href: "/check-in", label: "Sunday Check-in", tabLabel: "Check-in", Icon: CheckInIcon, group: "Sunday services" },
   { href: "/attendance", label: "Sunday Attendance", Icon: AttendanceIcon, group: "Sunday services" },
   { href: "/reports", label: "Sunday Reports", Icon: ReportsIcon, group: "Sunday services" },
-  { href: "/members", label: "Service Team Members", tabLabel: "Members", Icon: MembersIcon },
+  { href: "/members", label: "Service Team Members", tabLabel: "Members", Icon: MembersIcon, group: "People" },
+  { href: "/leaders", label: "Leaders & Staff", Icon: LeadersIcon, group: "People" },
   { href: "/events", label: "Events", Icon: EventsIcon },
-  { href: "/leaders", label: "Leaders & Staff", Icon: LeadersIcon },
-  { href: "/users", label: "Users", Icon: UsersIcon, superAdminOnly: true },
-  { href: "/settings", label: "Settings", Icon: SettingsIcon, superAdminOnly: true },
+  { href: "/users", label: "Users", Icon: UsersIcon, superAdminOnly: true, group: "Admin" },
+  { href: "/settings", label: "Settings", Icon: SettingsIcon, superAdminOnly: true, group: "Admin" },
 ];
 
 function useIsActive() {
@@ -55,7 +55,8 @@ export function SidebarNav({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         const startsGroup = group && items[index - 1]?.group !== group;
         const endsGroup = group && items[index + 1]?.group !== group;
         return (
-          <div key={href} className={`${startsGroup && index > 0 ? "mt-3" : ""} ${endsGroup ? "mb-3" : ""}`}>
+          // A group right after another group already has the previous group's bottom gap
+          <div key={href} className={`${startsGroup && index > 0 && !items[index - 1].group ? "mt-3" : ""} ${endsGroup ? "mb-3" : ""}`}>
             {startsGroup && (
               <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-teal-100/50">{group}</p>
             )}

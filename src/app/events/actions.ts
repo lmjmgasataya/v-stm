@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { eventCheckIns, eventRegistrations, events, leaders, members, staff } from "@/db/schema";
-import { parsePersonKey, type EventPerson, type EventPersonCheckIn, type PersonKind } from "@/lib/event-people-shared";
-import { MINISTRY_OPTIONS, SERVICE_ATTENDING_OPTIONS } from "@/lib/constants";
+import { PERSON_KINDS, parsePersonKey, type EventPerson, type EventPersonCheckIn, type PersonKind } from "@/lib/event-people-shared";
+import { MINISTRY_OPTIONS, SERVICE_ATTENDING_OPTIONS, SERVICE_GROUP_NAMES } from "@/lib/constants";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { requireMemberManager, requireSuperAdmin, requireViewer } from "@/lib/access";
 import { isDateString } from "@/lib/date";
@@ -19,7 +19,16 @@ const MAX_NOTES_LENGTH = 500;
 
 function readEventInput(formData: FormData) {
   const str = (key: string) => ((formData.get(key) as string | null) ?? "").trim();
-  return { name: str("name"), eventDate: str("eventDate"), notes: str("notes"), preRegistration: formData.get("preRegistration") === "on" };
+  const picked = (key: string, allowed: readonly string[]) => allowed.filter((v) => formData.getAll(key).includes(v));
+  return {
+    name: str("name"),
+    eventDate: str("eventDate"),
+    notes: str("notes"),
+    preRegistration: formData.get("preRegistration") === "on",
+    // Kept in the lists' own order; unknown values dropped
+    audienceGroups: picked("audienceGroups", SERVICE_GROUP_NAMES),
+    audienceKinds: picked("audienceKinds", PERSON_KINDS),
+  };
 }
 
 function validate(input: ReturnType<typeof readEventInput>): string | null {
@@ -27,6 +36,7 @@ function validate(input: ReturnType<typeof readEventInput>): string | null {
   if (input.name.length > MAX_NAME_LENGTH) return `Event name must be ${MAX_NAME_LENGTH} characters or fewer.`;
   if (!isDateString(input.eventDate)) return "Pick the event date.";
   if (input.notes.length > MAX_NOTES_LENGTH) return `Notes must be ${MAX_NOTES_LENGTH} characters or fewer.`;
+  if (input.audienceKinds.length === 0) return "Pick at least one group of people to invite.";
   return null;
 }
 
@@ -49,6 +59,8 @@ export async function createEvent(_: EventFormState, formData: FormData): Promis
       eventDate: input.eventDate,
       notes: input.notes || null,
       preRegistration: input.preRegistration,
+      audienceGroups: input.audienceGroups,
+      audienceKinds: input.audienceKinds,
       createdById: viewer.userId,
     })
     .returning({ id: events.id });
@@ -65,7 +77,14 @@ export async function updateEvent(eventId: number, _: EventFormState, formData: 
 
   await db
     .update(events)
-    .set({ name: input.name, eventDate: input.eventDate, notes: input.notes || null, preRegistration: input.preRegistration })
+    .set({
+      name: input.name,
+      eventDate: input.eventDate,
+      notes: input.notes || null,
+      preRegistration: input.preRegistration,
+      audienceGroups: input.audienceGroups,
+      audienceKinds: input.audienceKinds,
+    })
     .where(eq(events.id, eventId));
 
   revalidateEvents();

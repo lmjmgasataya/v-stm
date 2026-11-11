@@ -210,6 +210,16 @@ export function EventCheckInWorkspace({
         )}
       </div>
 
+      {/* Separates the counts above from the check-in tools below */}
+      <div className="flex items-center gap-3 pt-2">
+        <span className="h-px flex-1 bg-stone-200" aria-hidden="true" />
+        <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-stm-brand">
+          <span className="h-2 w-2 rounded-full bg-stm-green" aria-hidden="true" />
+          Check in
+        </h2>
+        <span className="h-px flex-1 bg-stone-200" aria-hidden="true" />
+      </div>
+
       <div className="flex flex-col gap-3">
         <div className="flex gap-2">
           <input

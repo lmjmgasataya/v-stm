@@ -43,6 +43,13 @@
       "when": 1794388626066,
       "tag": "0005_appreciation_night",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794391076301,
+      "tag": "0006_event_audience",
+      "breakpoints": true
     }
   ]
 }

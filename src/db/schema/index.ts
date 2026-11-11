@@ -121,6 +121,10 @@ export const events = pgTable(
     // On: check-in lists the people pre-registered as attending (stm_event_registrations);
     // anyone else can still be checked in, tagged as a walk-in.
     preRegistration: boolean("pre_registration").notNull().default(false),
+    // Who's invited (the pre-registration list): SERVICE_GROUPS keys — STMs and leaders of these
+    // services ([] = every service) — and which kinds of people (PersonKind: stm / leader / staff).
+    audienceGroups: text("audience_groups").array().notNull().default(sql`'{}'::text[]`),
+    audienceKinds: text("audience_kinds").array().notNull().default(sql`'{stm,leader,staff}'::text[]`),
     createdById: integer("created_by_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

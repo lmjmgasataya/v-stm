@@ -1,12 +1,8 @@
-import Link from "next/link";
 import { requireViewer } from "@/lib/access";
-import { formatDateString } from "@/lib/date";
 import { getEventOrNotFound } from "@/lib/events";
 import { getEventSummary, type SummaryCounts } from "@/lib/event-people";
-import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { MinistryName } from "@/components/MinistryName";
 import { StatCard } from "@/components/StatCard";
-import { secondaryBtnCls } from "@/components/form";
 
 const COLUMNS: { key: keyof SummaryCounts; label: string; preRegOnly?: boolean }[] = [
   { key: "invited", label: "Invited", preRegOnly: true },
@@ -27,23 +23,6 @@ export default async function EventSummaryPage({ params }: { params: Promise<{ i
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Breadcrumbs
-          items={[{ label: "Events", href: "/events" }, { label: event.name, href: `/events/${event.id}` }, { label: "Summary" }]}
-        />
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Summary</h1>
-            <p className="text-sm text-stone-500">
-              {event.name} · {formatDateString(event.eventDate)}
-            </p>
-          </div>
-          <Link href={`/events/${event.id}`} className={secondaryBtnCls}>
-            Back to check-in
-          </Link>
-        </div>
-      </div>
-
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {event.preRegistration && (
           <StatCard label="Will attend" value={grandTotal.willAttend} hint={`of ${grandTotal.invited} invited`} />

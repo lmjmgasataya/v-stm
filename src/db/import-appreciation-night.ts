@@ -22,10 +22,14 @@ import { splitMiddleInitial } from "@/lib/member-import";
 
 type EventKey = "AM" | "PM" | "LAPAZ";
 
-const EVENTS: Record<EventKey, { name: string; eventDate: string }> = {
-  AM: { name: "AM SERVICE TEAM MEMBERS AND LEADERS APPRECIATION NIGHT", eventDate: "2026-11-20" },
-  PM: { name: "PM and 6PM SERVICE TEAM MEMBERS AND LEADERS APPRECIATION NIGHT", eventDate: "2026-11-27" },
-  LAPAZ: { name: "LAPAZ SERVICE TEAM MEMBERS AND LEADERS APPRECIATION NIGHT", eventDate: "2026-12-04" },
+const EVENTS: Record<EventKey, { name: string; eventDate: string; audienceGroups: ServiceGroup[] }> = {
+  AM: { name: "AM SERVICE TEAM MEMBERS AND LEADERS APPRECIATION NIGHT", eventDate: "2026-11-20", audienceGroups: ["9AM & 11AM"] },
+  PM: {
+    name: "PM and 6PM SERVICE TEAM MEMBERS AND LEADERS APPRECIATION NIGHT",
+    eventDate: "2026-11-27",
+    audienceGroups: ["2PM & 4PM", "6PM"],
+  },
+  LAPAZ: { name: "LAPAZ SERVICE TEAM MEMBERS AND LEADERS APPRECIATION NIGHT", eventDate: "2026-12-04", audienceGroups: ["10AM & 1PM"] },
 };
 
 const STM_SHEETS: { sheet: string; group: ServiceGroup; event: EventKey }[] = [
@@ -283,7 +287,7 @@ async function main() {
         .from(events)
         .where(and(eq(events.name, e.name), eq(events.eventDate, e.eventDate)));
       if (found) {
-        await tx.update(events).set({ preRegistration: true }).where(eq(events.id, found.id));
+        await tx.update(events).set({ preRegistration: true, audienceGroups: e.audienceGroups }).where(eq(events.id, found.id));
         eventIds[key] = found.id;
       } else {
         const [created] = await tx.insert(events).values({ ...e, preRegistration: true }).returning({ id: events.id });

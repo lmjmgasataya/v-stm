@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { asc, count, desc, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/db";
@@ -56,11 +57,12 @@ export async function getEventsOn(date: string) {
     .orderBy(asc(events.name));
 }
 
-export async function getEventOrNotFound(rawId: string) {
+/** Cached per request: the event layout and its page both load it. */
+export const getEventOrNotFound = cache(async (rawId: string) => {
   const id = Number(rawId);
   if (!Number.isInteger(id)) notFound();
   const [event] = await db.select().from(events).where(eq(events.id, id)).limit(1);
   if (!event) notFound();
   return event;
-}
+});
 
