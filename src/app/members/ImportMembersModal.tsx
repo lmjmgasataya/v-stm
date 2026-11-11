@@ -29,7 +29,9 @@ const HEADER_CHOICES = 10; // rows offered as the header row
 const PREVIEW_ROW_LIMIT = 300; // rows rendered in the review table
 
 const STATUS_STYLES: Record<ImportPreviewRow["status"], { label: string; cls: string }> = {
-  new: { label: "Import", cls: "bg-stm-green/10 text-stm-green" },
+  new: { label: "Add", cls: "bg-stm-green/10 text-stm-green" },
+  update: { label: "Update", cls: "bg-teal-50 text-teal-800" },
+  unchanged: { label: "No change", cls: "bg-stone-100 text-stone-500" },
   duplicate: { label: "Skip", cls: "bg-stone-100 text-stone-500" },
   error: { label: "Error", cls: "bg-red-50 text-red-600" },
 };
@@ -43,6 +45,9 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
   const [fileName, setFileName] = useState("");
   const [rows, setRows] = useState<string[][] | null>(null);
   const [mapping, setMapping] = useState<ImportMapping>({ headerRow: null, columns: [] });
+  // Update people already in the list with the file's filled-in cells (on by default when the
+  // file has an ID column, i.e. it's an edited export)
+  const [updateExisting, setUpdateExisting] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [result, setResult] = useState<ImportSummary | null>(null);
   const [error, setError] = useState<string>();
@@ -76,7 +81,9 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
       }
       setFileName(file.name);
       setRows(parsed);
-      setMapping({ headerRow, columns: autoMapColumns(parsed, headerRow) });
+      const columns = autoMapColumns(parsed, headerRow);
+      setMapping({ headerRow, columns });
+      setUpdateExisting(columns.includes("id"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't read that file.");
     }
@@ -87,10 +94,10 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
     if (!rows) return;
     const request = ++previewRequest.current;
     startChecking(async () => {
-      const next = await previewMemberImport(rows, mapping);
+      const next = await previewMemberImport(rows, mapping, updateExisting);
       if (request === previewRequest.current) setPreview(next);
     });
-  }, [rows, mapping]);
+  }, [rows, mapping, updateExisting]);
 
   function changeHeaderRow(value: string) {
     if (!rows) return;
@@ -109,9 +116,9 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
   function confirmImport() {
     if (!rows) return;
     startImporting(async () => {
-      const summary = await importMembers(rows, mapping);
+      const summary = await importMembers(rows, mapping, updateExisting);
       setResult(summary);
-      if (summary.imported > 0) router.refresh();
+      if (summary.imported > 0 || summary.updated > 0) router.refresh();
     });
   }
 
@@ -133,6 +140,8 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
               rows={rows}
               mapping={mapping}
               preview={preview}
+              updateExisting={updateExisting}
+              onUpdateExistingChange={setUpdateExisting}
               checking={checking}
               importing={importing}
               onHeaderRowChange={changeHeaderRow}
@@ -161,6 +170,10 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
                   Only the name is required (Last + First Name, or one Full Name column). Put several ministries or
                   discipleship steps in one cell separated by “;” or “,” — ministries: {ministryList(MINISTRY_OPTIONS)}. VGL
                   names are matched to v-1&apos;s VGL list; unmatched names are kept as typed.
+                  <br />
+                  <span className="font-medium text-stone-700">To fill in details for people already here</span> (age, mobile,
+                  …): Export to Excel, add the details, and import that file — it keeps the ID column, so each row updates
+                  its own member. Blank cells never erase what&apos;s saved.
                   {scoped &&
                     (services.length === 1
                       ? ` Blank services become ${services[0]}; rows for other services are skipped.`
@@ -206,6 +219,8 @@ function ReviewStep({
   rows,
   mapping,
   preview,
+  updateExisting,
+  onUpdateExistingChange,
   checking,
   importing,
   onHeaderRowChange,
@@ -217,6 +232,8 @@ function ReviewStep({
   rows: string[][];
   mapping: ImportMapping;
   preview: ImportPreview | null;
+  updateExisting: boolean;
+  onUpdateExistingChange: (value: boolean) => void;
   checking: boolean;
   importing: boolean;
   onHeaderRowChange: (value: string) => void;
@@ -224,21 +241,25 @@ function ReviewStep({
   onBack: () => void;
   onConfirm: () => void;
 }) {
-  const [filter, setFilter] = useState<"all" | "new" | "skipped" | "warnings">("all");
+  const [filter, setFilter] = useState<"all" | "new" | "update" | "skipped" | "warnings">("all");
   const header = mapping.headerRow === null ? null : rows[mapping.headerRow];
   const firstData = rows[(mapping.headerRow ?? -1) + 1] ?? [];
-  const counts = preview?.counts ?? { new: 0, duplicate: 0, error: 0 };
+  const counts = preview?.counts ?? { new: 0, update: 0, unchanged: 0, duplicate: 0, error: 0 };
   const allRows = preview?.rows ?? [];
-  const warned = allRows.filter((r) => r.status === "new" && r.warnings.length > 0).length;
+  const saving = (r: ImportPreviewRow) => r.status === "new" || r.status === "update";
+  const warned = allRows.filter((r) => saving(r) && r.warnings.length > 0).length;
   const shown = allRows.filter((r) =>
     filter === "all"
       ? true
       : filter === "new"
         ? r.status === "new"
-        : filter === "warnings"
-          ? r.status === "new" && r.warnings.length > 0
-          : r.status !== "new"
+        : filter === "update"
+          ? r.status === "update"
+          : filter === "warnings"
+            ? saving(r) && r.warnings.length > 0
+            : !saving(r)
   );
+  const toSave = counts.new + counts.update;
 
   return (
     <div className="flex flex-col gap-5 text-sm">
@@ -262,6 +283,22 @@ function ReviewStep({
           </select>
         </label>
       </div>
+
+      <label className="flex items-start gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5">
+        <input
+          type="checkbox"
+          checked={updateExisting}
+          onChange={(e) => onUpdateExistingChange(e.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-stm-brand"
+        />
+        <span>
+          <span className="font-semibold text-stone-800">Update people already in the list</span>
+          <span className="block text-xs text-stone-500">
+            Rows are matched by the ID column (from Export), else by name. Only filled-in cells are saved — blanks never erase
+            existing details. Off: people already here are skipped.
+          </span>
+        </span>
+      </label>
 
       <section>
         <h4 className="mb-2 font-semibold text-stone-700">Columns</h4>
@@ -306,9 +343,10 @@ function ReviewStep({
           {(
             [
               ["all", `All ${allRows.length}`],
-              ["new", `${counts.new} to import`],
+              ["new", `${counts.new} to add`],
+              ...(updateExisting ? ([["update", `${counts.update} to update`]] as const) : []),
               ["warnings", `${warned} with blanks`],
-              ["skipped", `${counts.duplicate + counts.error} skipped`],
+              ["skipped", `${counts.unchanged + counts.duplicate + counts.error} skipped`],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -368,7 +406,7 @@ function ReviewStep({
                       {STATUS_STYLES[r.status].label}
                     </span>
                     {r.message && <span className="ml-2 text-xs text-stone-500">{r.message}</span>}
-                    {r.status === "new" &&
+                    {saving(r) &&
                       r.warnings.map((w) => (
                         <p key={w} className="mt-0.5 text-xs text-stm-amber">
                           {w} — left blank
@@ -399,6 +437,12 @@ function ReviewStep({
           {preview && (
             <>
               <span className="font-semibold text-stone-800">{counts.new}</span> will be added
+              {updateExisting && (
+                <>
+                  , <span className="font-semibold text-stone-800">{counts.update}</span> updated
+                </>
+              )}
+              {counts.unchanged > 0 && <>, {counts.unchanged} unchanged</>}
               {counts.duplicate > 0 && <>, {counts.duplicate} already here</>}
               {counts.error > 0 && <span className="text-red-600">, {counts.error} with errors</span>}.
             </>
@@ -410,10 +454,13 @@ function ReviewStep({
         <button
           type="button"
           onClick={onConfirm}
-          disabled={!preview || checking || importing || counts.new === 0}
+          disabled={!preview || checking || importing || toSave === 0}
           className={primaryBtnCls}
         >
-          {importing ? "Importing…" : `Import ${counts.new} member${counts.new === 1 ? "" : "s"}`}
+          {importing
+            ? "Saving…"
+            : [counts.new > 0 && `Add ${counts.new}`, counts.update > 0 && `Update ${counts.update}`].filter(Boolean).join(" · ") ||
+              "Nothing to save"}
         </button>
       </div>
     </div>
@@ -424,9 +471,11 @@ function ResultStep({ result, onClose }: { result: ImportSummary; onClose: () =>
   return (
     <>
       <div className="rounded-lg bg-stone-50 p-3 text-sm">
-        <p className="font-semibold text-stm-green">{result.imported} member(s) imported.</p>
+        <p className="font-semibold text-stm-green">{result.imported} member(s) added.</p>
+        {result.updated > 0 && <p className="font-semibold text-teal-800">{result.updated} member(s) updated.</p>}
+        {result.unchanged > 0 && <p className="text-stone-600">{result.unchanged} already up to date.</p>}
         {result.duplicates > 0 && <p className="text-stone-600">{result.duplicates} skipped — already a member.</p>}
-        {result.errors > 0 && <p className="text-red-600">{result.errors} skipped — missing name or service.</p>}
+        {result.errors > 0 && <p className="text-red-600">{result.errors} skipped — see the errors on the review step.</p>}
       </div>
       <div className="mt-5 flex justify-end">
         <button type="button" onClick={onClose} className={primaryBtnCls}>

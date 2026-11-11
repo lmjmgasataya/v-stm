@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { members } from "@/db/schema";
-import { requireMemberManager, type Viewer } from "@/lib/access";
+import { memberScope, requireMemberManager, type Viewer } from "@/lib/access";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { splitFullName } from "@/lib/csv";
 import { MAX_NICKNAME_LENGTH, normalizeMobileNumber } from "@/lib/members";
 import {
@@ -16,7 +18,9 @@ import {
   parseLifestage,
   parseMiddleInitial,
   parseMinistries,
+  parseMemberId,
   parseService,
+  parseYesNo,
   splitMiddleInitial,
   type ImportMapping,
   type MemberColumn,
@@ -24,7 +28,12 @@ import {
 } from "@/lib/member-import";
 import { getActiveVgls, vglName } from "@/lib/vgl";
 
-export type ImportRowStatus = "new" | "duplicate" | "error";
+/**
+ * new = added; update = an existing member gets the file's filled-in cells; unchanged = matched
+ * an existing member but nothing differs; duplicate = skipped (already a member when not
+ * updating, or repeated in the file); error = skipped.
+ */
+export type ImportRowStatus = "new" | "update" | "unchanged" | "duplicate" | "error";
 
 export interface ImportPreviewRow {
   /** Row number in the file (1-based, as a spreadsheet shows it). */
@@ -40,7 +49,7 @@ export interface ImportPreviewRow {
   vglName: string | null;
   /** True when the VGL matched exactly one leader in v-1's list. */
   vglLinked: boolean;
-  /** Why the row will be skipped (errors and duplicates). */
+  /** Why the row will be skipped (errors and duplicates), or what an update changes. */
   message?: string;
   /** Cells that couldn't be read and will be left blank; the row is still imported. */
   warnings: string[];
@@ -53,11 +62,48 @@ export interface ImportPreview {
 
 export interface ImportSummary {
   imported: number;
+  updated: number;
+  unchanged: number;
   duplicates: number;
   errors: number;
 }
 
+type MemberInsert = typeof members.$inferInsert;
+/** Columns an import can update (only those with a filled-in, readable cell are set). */
+type MemberChanges = Partial<Omit<MemberInsert, "id" | "createdAt" | "updatedAt" | "isActive">>;
+
+interface ImportEntry {
+  row: ImportPreviewRow;
+  /** The file's ID column (an export's member ID), if any */
+  id: number | null;
+  /** Full values for adding them as a new member */
+  values: MemberInsert;
+  /** Only the cells that were filled in — what an update writes, so blanks never erase data */
+  changes: MemberChanges;
+}
+
+/** Field → label for "Updates: Age, Gender" */
+const CHANGE_LABELS: Record<keyof MemberChanges, string> = {
+  lastName: "Last name",
+  firstName: "First name",
+  middleInitial: "M.I.",
+  nickname: "Nickname",
+  mobileNumber: "Mobile",
+  facebookMessengerName: "Messenger",
+  lifestage: "Lifestage",
+  age: "Age",
+  gender: "Gender",
+  serviceAttending: "Service",
+  email: "Email",
+  vglId: "VGL",
+  vglName: "VGL",
+  discipleshipJourneyCompleted: "Discipleship journey",
+  ministries: "Ministry",
+  profileSubmitted: "Profile submitted",
+};
+
 const INSERT_CHUNK_SIZE = 500;
+const UPDATE_BATCH_SIZE = 20; // updates are one row each; run this many at a time
 const MEMBER_COLUMNS = new Set<string>(Object.keys(MEMBER_COLUMN_LABELS));
 
 // Same rule as stm_members_person_uq
@@ -108,8 +154,7 @@ async function buildImportRows(viewer: Viewer, rawRows: unknown, rawMapping: unk
 
   const vglLookup = columns.has("vgl") ? await buildVglLookup() : new Map();
   const preview: ImportPreviewRow[] = [];
-  const values: (typeof members.$inferInsert)[] = [];
-  const valueRows: ImportPreviewRow[] = []; // preview row for each entry in values
+  const entries: ImportEntry[] = [];
   const seen = new Set<string>();
   const hasNameColumns = (columns.has("lastName") && columns.has("firstName")) || columns.has("fullName");
 
@@ -158,6 +203,8 @@ async function buildImportRows(viewer: Viewer, rawRows: unknown, rawMapping: unk
         : `Service attending is required: ${viewer.attending.join(" or ")}.`;
     }
     const email = read("email", parseEmail(cell("email")), null);
+    const profileSubmitted = read("profileSubmitted", parseYesNo(cell("profileSubmitted")), null);
+    const id = parseMemberId(cell("id"));
     const ministries = parseMinistries(cell("ministries"));
     if (ministries.unknown.length) warnings.push(`Ministry not recognized: ${ministries.unknown.join(", ")}`);
     const journey = parseDiscipleshipJourney(cell("discipleshipJourneyCompleted"));
@@ -188,11 +235,27 @@ async function buildImportRows(viewer: Viewer, rawRows: unknown, rawMapping: unk
     if (!lastName || !firstName) return fail("Last name and first name are required.");
     if (serviceError) return fail(serviceError);
 
-    const key = personKey(lastName, firstName, mobileNumber);
+    const key = id !== null ? `id:${id}` : personKey(lastName, firstName, mobileNumber);
     if (seen.has(key)) return Object.assign(row, { status: "duplicate", message: "Repeated in this file." });
     seen.add(key);
 
-    values.push({
+    const changes: MemberChanges = { lastName, firstName };
+    if (middleInitial) changes.middleInitial = middleInitial;
+    if (nickname) changes.nickname = nickname;
+    if (mobileNumber) changes.mobileNumber = mobileNumber;
+    if (cell("facebookMessengerName")) changes.facebookMessengerName = cell("facebookMessengerName");
+    if (lifestage) changes.lifestage = lifestage;
+    if (age !== null) changes.age = age;
+    if (gender) changes.gender = gender;
+    // Only a service actually in the file — a scoped admin's blank-service default is for new rows
+    if (serviceCell && serviceAttending) changes.serviceAttending = serviceAttending;
+    if (email) changes.email = email;
+    if (vglText) Object.assign(changes, { vglId: vgl?.id ?? null, vglName: row.vglName });
+    if (journey.values.length) changes.discipleshipJourneyCompleted = journey.values.join(",");
+    if (ministries.values.length) changes.ministries = ministries.values;
+    if (profileSubmitted !== null) changes.profileSubmitted = profileSubmitted;
+
+    const values: MemberInsert = {
       lastName,
       firstName,
       middleInitial,
@@ -210,58 +273,154 @@ async function buildImportRows(viewer: Viewer, rawRows: unknown, rawMapping: unk
       vglName: row.vglName,
       discipleshipJourneyCompleted: journey.values.join(",") || null,
       ministries: ministries.values,
-    });
-    valueRows.push(row);
+      profileSubmitted,
+    };
+    entries.push({ row, id, values, changes });
   });
 
-  return { preview, values, valueRows };
+  return { preview, entries };
 }
 
 function countStatuses(rows: ImportPreviewRow[]): Record<ImportRowStatus, number> {
-  const counts = { new: 0, duplicate: 0, error: 0 };
+  const counts = { new: 0, update: 0, unchanged: 0, duplicate: 0, error: 0 };
   for (const r of rows) counts[r.status]++;
   return counts;
 }
 
-/** Dry run for the import review step: what each row will do, without saving anything. */
-export async function previewMemberImport(rows: string[][], mapping: ImportMapping): Promise<ImportPreview> {
-  const viewer = await requireMemberManager();
+const same = (a: unknown, b: unknown) =>
+  Array.isArray(a) && Array.isArray(b) ? a.join("|") === b.join("|") : (a ?? null) === (b ?? null);
 
-  const { preview, valueRows } = await buildImportRows(viewer, rows, mapping);
+/**
+ * Decides what each importable row does, setting its preview status/message.
+ * - Not updating: people already in the database (same name + mobile) are duplicates.
+ * - Updating: a row matches an existing member within the viewer's services by its ID
+ *   column, else by name + mobile, else by name alone when exactly one member has it.
+ *   A match becomes an update (or "unchanged" when nothing differs); no match → new.
+ * Returns the matched member id per update entry.
+ */
+async function resolveEntries(viewer: Viewer, entries: ImportEntry[], updateExisting: boolean) {
+  const updates = new Map<ImportEntry, { memberId: number; changes: MemberChanges }>();
 
-  const existing = await db
-    .select({ lastName: members.lastName, firstName: members.firstName, mobileNumber: members.mobileNumber })
-    .from(members);
-  const existingKeys = new Set(existing.map((m) => personKey(m.lastName, m.firstName, m.mobileNumber)));
-  for (const row of valueRows) {
-    if (existingKeys.has(personKey(row.lastName, row.firstName, row.mobileNumber))) {
-      Object.assign(row, { status: "duplicate", message: "Already a member." });
+  if (!updateExisting) {
+    const existing = await db
+      .select({ lastName: members.lastName, firstName: members.firstName, mobileNumber: members.mobileNumber })
+      .from(members);
+    const existingKeys = new Set(existing.map((m) => personKey(m.lastName, m.firstName, m.mobileNumber)));
+    for (const { row } of entries) {
+      if (existingKeys.has(personKey(row.lastName, row.firstName, row.mobileNumber))) {
+        Object.assign(row, { status: "duplicate", message: "Already a member." });
+      }
     }
+    return updates;
   }
 
+  const existing = await db.select().from(members).where(memberScope(viewer));
+  const byId = new Map(existing.map((m) => [m.id, m]));
+  const byKey = new Map(existing.map((m) => [personKey(m.lastName, m.firstName, m.mobileNumber), m]));
+  const byName = new Map<string, (typeof existing)[number][]>();
+  for (const m of existing) {
+    const k = `${m.lastName.toLowerCase()}|${m.firstName.toLowerCase()}`;
+    byName.set(k, [...(byName.get(k) ?? []), m]);
+  }
+
+  const claimed = new Set<number>(); // two rows updating the same member → the second is a repeat
+  for (const entry of entries) {
+    const { row } = entry;
+    let match: (typeof existing)[number] | undefined;
+    if (entry.id !== null) {
+      match = byId.get(entry.id);
+      if (!match) {
+        Object.assign(row, { status: "error", message: `ID ${entry.id} isn't a member in your services.` });
+        continue;
+      }
+    } else {
+      match = byKey.get(personKey(row.lastName, row.firstName, row.mobileNumber));
+      if (!match) {
+        const named = byName.get(`${row.lastName.toLowerCase()}|${row.firstName.toLowerCase()}`) ?? [];
+        if (named.length > 1) {
+          Object.assign(row, { status: "error", message: `${named.length} members have this name — add the ID column to pick one.` });
+          continue;
+        }
+        match = named[0];
+      }
+    }
+    if (!match) continue; // stays "new"
+    if (claimed.has(match.id)) {
+      Object.assign(row, { status: "duplicate", message: "Repeated in this file." });
+      continue;
+    }
+    claimed.add(match.id);
+
+    const changed = (Object.keys(entry.changes) as (keyof MemberChanges)[]).filter((f) => !same(entry.changes[f], match[f]));
+    if (changed.length === 0) {
+      Object.assign(row, { status: "unchanged", message: "Nothing new in this row." });
+      continue;
+    }
+    const labels = [...new Set(changed.map((f) => CHANGE_LABELS[f]))];
+    Object.assign(row, { status: "update", message: `Updates: ${labels.join(", ")}` });
+    updates.set(entry, { memberId: match.id, changes: Object.fromEntries(changed.map((f) => [f, entry.changes[f]])) });
+  }
+  return updates;
+}
+
+/** Dry run for the import review step: what each row will do, without saving anything. */
+export async function previewMemberImport(rows: string[][], mapping: ImportMapping, updateExisting = false): Promise<ImportPreview> {
+  const viewer = await requireMemberManager();
+  const { preview, entries } = await buildImportRows(viewer, rows, mapping);
+  await resolveEntries(viewer, entries, updateExisting);
   return { rows: preview, counts: countStatuses(preview) };
 }
 
 /**
- * Imports the rows confirmed on the review step. Rows matching an existing member
- * (same name + mobile number) are skipped and counted as duplicates, so re-importing
- * an updated sheet only adds the new people.
+ * Saves the rows confirmed on the review step: new people are added (anyone matching an
+ * existing member by name + mobile is skipped as a duplicate); with `updateExisting`, matched
+ * members get the file's filled-in cells — blank cells never erase what's already saved.
  */
-export async function importMembers(rows: string[][], mapping: ImportMapping): Promise<ImportSummary> {
+export async function importMembers(rows: string[][], mapping: ImportMapping, updateExisting = false): Promise<ImportSummary> {
   const viewer = await requireMemberManager();
 
-  const { preview, values } = await buildImportRows(viewer, rows, mapping);
+  const { preview, entries } = await buildImportRows(viewer, rows, mapping);
+  const updates = await resolveEntries(viewer, entries, updateExisting);
   const counts = countStatuses(preview);
+  const toInsert = entries.filter((e) => e.row.status === "new").map((e) => e.values);
 
   let imported = 0;
-  for (let i = 0; i < values.length; i += INSERT_CHUNK_SIZE) {
-    const chunk = values.slice(i, i + INSERT_CHUNK_SIZE);
+  for (let i = 0; i < toInsert.length; i += INSERT_CHUNK_SIZE) {
+    const chunk = toInsert.slice(i, i + INSERT_CHUNK_SIZE);
     // Conflicts hit stm_members_person_uq — people already in the database
     const inserted = await db.insert(members).values(chunk).onConflictDoNothing().returning({ id: members.id });
     imported += inserted.length;
   }
 
-  if (imported > 0) revalidatePath("/", "layout");
+  let updated = 0;
+  let updateErrors = 0;
+  const pending = [...updates.values()];
+  for (let i = 0; i < pending.length; i += UPDATE_BATCH_SIZE) {
+    await Promise.all(
+      pending.slice(i, i + UPDATE_BATCH_SIZE).map(async ({ memberId, changes }) => {
+        try {
+          const done = await db
+            .update(members)
+            .set({ ...changes, updatedAt: new Date() })
+            .where(and(eq(members.id, memberId), memberScope(viewer)))
+            .returning({ id: members.id });
+          if (done.length) updated++;
+        } catch (err) {
+          // e.g. a new mobile number that makes them identical to another member
+          if (isUniqueViolation(err)) updateErrors++;
+          else throw err;
+        }
+      })
+    );
+  }
 
-  return { imported, duplicates: counts.duplicate + (values.length - imported), errors: counts.error };
+  if (imported > 0 || updated > 0) revalidatePath("/", "layout");
+
+  return {
+    imported,
+    updated,
+    unchanged: counts.unchanged,
+    duplicates: counts.duplicate + (toInsert.length - imported),
+    errors: counts.error + updateErrors,
+  };
 }

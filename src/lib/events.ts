@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { asc, count, desc, eq, gte, lt } from "drizzle-orm";
+import { asc, count, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { eventCheckIns, events } from "@/db/schema";
 import { manilaDateString } from "@/lib/date";
@@ -48,13 +48,34 @@ export async function getEventsWithCounts(): Promise<{ upcoming: EventSummary[];
   return { upcoming: upcoming.map(withCount), past: past.map(withCount) };
 }
 
-/** Events on one date — for the dashboard and attendance page. */
+/** Events on one date with their check-in counts (and pre-registered count) — for the dashboard. */
 export async function getEventsOn(date: string) {
-  return db
-    .select({ id: events.id, name: events.name })
+  const dayEvents = await db
+    .select({ id: events.id, name: events.name, preRegistration: events.preRegistration })
     .from(events)
     .where(eq(events.eventDate, date))
     .orderBy(asc(events.name));
+  if (!dayEvents.length) return [];
+  const ids = dayEvents.map((e) => e.id);
+  const [counts, willAttend] = await Promise.all([
+    db
+      .select({
+        eventId: eventCheckIns.eventId,
+        checkedIn: count(),
+        walkIns: sql<number>`count(*) filter (where ${eventCheckIns.isWalkIn})`.mapWith(Number),
+      })
+      .from(eventCheckIns)
+      .where(inArray(eventCheckIns.eventId, ids))
+      .groupBy(eventCheckIns.eventId),
+    getWillAttendCounts(ids),
+  ]);
+  const byEvent = new Map(counts.map((c) => [c.eventId, c]));
+  return dayEvents.map((e) => ({
+    ...e,
+    checkedIn: byEvent.get(e.id)?.checkedIn ?? 0,
+    walkIns: byEvent.get(e.id)?.walkIns ?? 0,
+    willAttend: willAttend.get(e.id) ?? 0,
+  }));
 }
 
 /** Cached per request: the event layout and its page both load it. */

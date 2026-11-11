@@ -34,7 +34,9 @@ export async function GET(req: NextRequest) {
 
   // The first columns are exactly the import template's, so an export can be edited and
   // re-imported; the extra columns at the end are ignored by the import.
-  const header = [...MEMBER_IMPORT_HEADERS, "Status", "Last Served", "Added", "Profile Submitted"];
+  // "Profile Submitted" and "ID" are read back by the import too: ID matches the existing member
+  // when the file is re-imported with "Update people already in the list"
+  const header = [...MEMBER_IMPORT_HEADERS, "Status", "Last Served", "Added", "Profile Submitted", "ID"];
   const data = rows.map((m) => [
     m.lastName,
     m.firstName,
@@ -54,6 +56,7 @@ export async function GET(req: NextRequest) {
     m.lastServed,
     manilaDateString(m.createdAt),
     m.profileSubmitted === null ? null : m.profileSubmitted ? "Yes" : "No",
+    m.id,
   ]);
 
   const sheet: SheetData = [

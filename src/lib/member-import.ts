@@ -25,7 +25,9 @@ export type MemberColumn =
   | "email"
   | "vgl"
   | "discipleshipJourneyCompleted"
-  | "ministries";
+  | "ministries"
+  | "profileSubmitted"
+  | "id"; // the app's member ID (from an export) — matches an existing member when updating
 
 export const MEMBER_COLUMN_LABELS: Record<MemberColumn, string> = {
   lastName: "Last name",
@@ -43,6 +45,8 @@ export const MEMBER_COLUMN_LABELS: Record<MemberColumn, string> = {
   vgl: "VGL",
   discipleshipJourneyCompleted: "Discipleship journey completed",
   ministries: "Ministry",
+  profileSubmitted: "Profile submitted (yes/no)",
+  id: "Member ID (to update existing)",
 };
 
 /** Header row of the downloadable template, in this order. */
@@ -132,6 +136,11 @@ const HEADER_ALIASES: Record<string, MemberColumn> = {
   discipleshipjourney: "discipleshipJourneyCompleted",
   ministry: "ministries",
   ministries: "ministries",
+  profilesubmitted: "profileSubmitted",
+  submittedtheserviceteammembersprofile: "profileSubmitted",
+  id: "id",
+  memberid: "id",
+  stmid: "id",
 };
 
 const normalizeHeader = (header: string) => header.toLowerCase().replace(/[^a-z]/g, "");
@@ -253,6 +262,21 @@ export function parseService(raw: string): Parsed<string | null> {
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** "Yes" / "Y" / "Submitted" → true, "No" / "N" / "Not yet" → false, blank → null. */
+export function parseYesNo(raw: string): Parsed<boolean | null> {
+  const key = squash(raw);
+  if (!key) return { value: null };
+  if (["yes", "y", "true", "submitted", "1"].includes(key) || key.startsWith("yes")) return { value: true };
+  if (["no", "n", "false", "notyet", "0"].includes(key)) return { value: false };
+  return { invalid: raw };
+}
+
+/** A positive whole number (the export's ID column), else null. */
+export function parseMemberId(raw: string): number | null {
+  const value = raw.trim();
+  return /^\d+$/.test(value) && Number(value) > 0 ? Number(value) : null;
+}
 
 export function parseEmail(raw: string): Parsed<string | null> {
   const value = raw.trim().toLowerCase();
