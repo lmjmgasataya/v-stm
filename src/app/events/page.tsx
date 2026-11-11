@@ -3,10 +3,12 @@ import { requireViewer } from "@/lib/access";
 import { formatDateString, manilaDateString } from "@/lib/date";
 import { getEventsWithCounts, type EventSummary } from "@/lib/events";
 import { primaryBtnCls } from "@/components/form";
+import { getOfficialCount } from "@/lib/official-count";
+import { OfficialCount } from "./OfficialCount";
 
-export default async function EventsPage() {
+export default async function EventsPage({ searchParams }: { searchParams: Promise<{ year?: string }> }) {
   const viewer = await requireViewer();
-  const { upcoming, past } = await getEventsWithCounts();
+  const [{ upcoming, past }, officialCount] = await Promise.all([getEventsWithCounts(), getOfficialCount((await searchParams).year)]);
   const today = manilaDateString();
 
   return (
@@ -22,6 +24,9 @@ export default async function EventsPage() {
           </Link>
         )}
       </div>
+
+      {/* The yearly appreciation night's official count (the masterlist's SUMMARY sheet) */}
+      {officialCount && <OfficialCount data={officialCount} />}
 
       {upcoming.length === 0 && past.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-12 text-center">

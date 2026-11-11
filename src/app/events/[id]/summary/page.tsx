@@ -40,7 +40,7 @@ function groupSpans(columns: SummaryColumn[]): { group: SummaryColumnGroup; span
 export default async function EventSummaryPage({ params }: { params: Promise<{ id: string }> }) {
   await requireViewer();
   const event = await getEventOrNotFound((await params).id);
-  const { sections, grandTotal, byService } = await getEventSummary(event.id);
+  const { sections, grandTotal } = await getEventSummary(event.id);
   const columns = summaryColumns(event.preRegistration);
   const hasData = sections.length > 0;
 
@@ -149,58 +149,11 @@ export default async function EventSummaryPage({ params }: { params: Promise<{ i
         </div>
       )}
 
-      {byService && (
-        <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-2">STMs by service</h2>
-          <div className="bg-white rounded-2xl border border-stone-200/80 shadow-sm overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
-                <tr>
-                  <th rowSpan={2} className="px-3 py-2 text-left font-semibold align-bottom">
-                    Ministry
-                  </th>
-                  {byService.groups.map((g) => (
-                    <th key={g} colSpan={event.preRegistration ? 2 : 1} className="px-3 pt-2 text-center font-semibold whitespace-nowrap">
-                      {g}
-                    </th>
-                  ))}
-                </tr>
-                <tr>
-                  {byService.groups.map((g) => (
-                    <SubHeads key={g} preRegistration={event.preRegistration} />
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {byService.rows.map((row) => (
-                  <tr key={row.label} className="border-t border-stone-100">
-                    <td className="px-3 py-2 text-stone-800">
-                      <MinistryName ministry={row.label} />
-                    </td>
-                    {row.cells.map((cell, i) => (
-                      <Cells key={i} cell={cell} preRegistration={event.preRegistration} />
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="border-t-2 border-stone-300 bg-stm-brand/5 font-bold">
-                <tr>
-                  <td className="px-3 py-2.5 text-stone-900">Total</td>
-                  {byService.totals.map((cell, i) => (
-                    <Cells key={i} cell={cell} preRegistration={event.preRegistration} />
-                  ))}
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </section>
-      )}
-
       <p className="text-xs text-stone-400">
         {event.preRegistration
           ? "Invited = on this event's list. Will attend / won't attend = their RSVP. Checked in = pre-registered people who came; walk-ins = everyone else who was checked in. "
           : ""}
-        An STM in more than one ministry counts in each ministry row but once in the subtotals.
+        An STM in more than one ministry counts in each ministry row but once in the subtotals. STMs and leaders are listed per service when the event has more than one.
       </p>
     </div>
   );
@@ -210,22 +163,4 @@ export default async function EventSummaryPage({ params }: { params: Promise<{ i
 function divider(c: SummaryColumn, columns: SummaryColumn[]) {
   const i = columns.indexOf(c);
   return i > 0 && c.group !== columns[i - 1].group && c.tint !== "total" ? "border-l-2 border-l-stone-300" : "";
-}
-
-function SubHeads({ preRegistration }: { preRegistration: boolean }) {
-  return (
-    <>
-      {preRegistration && <th className="px-3 pb-2 text-right font-medium normal-case">Will attend</th>}
-      <th className="px-3 pb-2 text-right font-medium normal-case">Present</th>
-    </>
-  );
-}
-
-function Cells({ cell, preRegistration }: { cell: { willAttend: number; present: number }; preRegistration: boolean }) {
-  return (
-    <>
-      {preRegistration && <td className={`${numCls} ${cell.willAttend ? "" : "text-stone-300"}`}>{cell.willAttend}</td>}
-      <td className={`${numCls} font-bold ${cell.present ? "" : "text-stone-300"}`}>{cell.present}</td>
-    </>
-  );
 }

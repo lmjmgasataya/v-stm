@@ -14,6 +14,7 @@ export function AttendanceCalendar({
   today,
   counts,
   keep = "",
+  basePath = "/attendance",
 }: {
   /** "YYYY-MM" being shown */
   month: string;
@@ -23,6 +24,8 @@ export function AttendanceCalendar({
   counts: Map<string, number>;
   /** Other query params to carry on every link (ministry filter, sort), e.g. "&ministry=Music". */
   keep?: string;
+  /** Page the day/month links go to ("/attendance" or "/event-attendance") */
+  basePath?: string;
 }) {
   const [y, m] = month.split("-").map(Number);
   const leadingBlanks = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
@@ -36,7 +39,7 @@ export function AttendanceCalendar({
   const days = Array.from({ length: daysInMonth }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`);
   const activeDays = days.filter((d) => counts.has(d));
   const monthTotal = activeDays.reduce((sum, d) => sum + counts.get(d)!, 0);
-  const monthHref = (delta: number) => `/attendance?date=${selected}&month=${addMonths(month, delta)}${keep}`;
+  const monthHref = (delta: number) => `${basePath}?date=${selected}&month=${addMonths(month, delta)}${keep}`;
   const navCls = "rounded-lg px-2 py-1 text-stone-500 hover:bg-stone-100 hover:text-stm-brand transition";
 
   return (
@@ -66,7 +69,7 @@ export function AttendanceCalendar({
           return (
             <Link
               key={day}
-              href={`/attendance?date=${day}${keep}`}
+              href={`${basePath}?date=${day}${keep}`}
               replace
               scroll={false}
               aria-current={isSelected ? "date" : undefined}
@@ -97,7 +100,7 @@ export function AttendanceCalendar({
             : "No check-ins this month"}
         </span>
         {selected !== today && (
-          <Link href={`/attendance?date=${today}${keep}`} replace scroll={false} className="font-semibold text-stm-brand hover:underline">
+          <Link href={`${basePath}?date=${today}${keep}`} replace scroll={false} className="font-semibold text-stm-brand hover:underline">
             Today
           </Link>
         )}

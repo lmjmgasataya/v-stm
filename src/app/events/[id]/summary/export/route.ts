@@ -21,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const [event] = Number.isInteger(id) ? await db.select().from(events).where(eq(events.id, id)).limit(1) : [];
   if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
-  const { sections, grandTotal, byService } = await getEventSummary(event.id);
+  const { sections, grandTotal } = await getEventSummary(event.id);
   const columns = summaryColumns(event.preRegistration);
   const width = columns.length + 1;
 
@@ -90,36 +90,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
   sheet.push(countsRow({ value: "Grand total", fontWeight: "bold", topBorderStyle: "medium" }, grandTotal, true));
 
-  if (byService) {
-    const perGroup = event.preRegistration ? 2 : 1;
-    sheet.push([], [bold("STMs by service")]);
-    sheet.push([
-      bold("Ministry"),
-      ...byService.groups.flatMap((g) => [
-        { value: g, fontWeight: "bold" as const, align: "center" as const, columnSpan: perGroup, backgroundColor: HEADER_BG },
-        ...Array<null>(perGroup - 1).fill(null),
-      ]),
-    ]);
-    sheet.push([
-      { value: "" },
-      ...byService.groups.flatMap(() => [
-        ...(event.preRegistration
-          ? [{ value: "Will attend", align: "right" as const, backgroundColor: TINT_HEX.teal.bg, textColor: TINT_HEX.teal.text }]
-          : []),
-        { value: "Present", fontWeight: "bold" as const, align: "right" as const, backgroundColor: TINT_HEX.total.bg },
-      ]),
-    ]);
-    const serviceCells = (cells: { willAttend: number; present: number }[], strong = false): Cell[] =>
-      cells.flatMap((cell) => [
-        ...(event.preRegistration
-          ? [{ value: cell.willAttend, type: Number, backgroundColor: TINT_HEX.teal.bg, textColor: TINT_HEX.teal.text, ...(strong ? { fontWeight: "bold" as const } : {}) }]
-          : []),
-        { value: cell.present, type: Number, fontWeight: "bold" as const, backgroundColor: TINT_HEX.total.bg },
-      ]);
-    for (const row of byService.rows) sheet.push([{ value: row.label }, ...serviceCells(row.cells)]);
-    sheet.push([bold("Total"), ...serviceCells(byService.totals, true)]);
-  }
-
   sheet.push(
     [],
     wide({
@@ -127,7 +97,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         event.preRegistration
           ? "Invited = on this event's list. Will attend / won't attend = their RSVP. Checked in = pre-registered people who came; walk-ins = everyone else who was checked in. "
           : ""
-      }An STM in more than one ministry counts in each ministry row but once in the subtotals.`,
+      }An STM in more than one ministry counts in each ministry row but once in the subtotals. STMs and leaders are listed per service when the event has more than one.`,
       wrap: true,
       height: 45,
     })

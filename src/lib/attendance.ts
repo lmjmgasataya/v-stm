@@ -58,83 +58,88 @@ export async function getAttendanceByService(
   return Array.from(byService, ([service, serviceRows]) => ({ service, rows: serviceRows }));
 }
 
-/** Service check-ins of members in `ministry` (when given); none at all for a leaders/staff filter. */
-function ministryScope(filter: string | undefined): SQL | undefined {
-  if (isKindFilter(filter)) return eq(members.id, -1);
-  return filter ? arrayContains(members.ministries, [filter]) : undefined;
+/** Service check-ins of members in `ministry` (when given). */
+function ministryScope(ministry: string | undefined): SQL | undefined {
+  return ministry ? arrayContains(members.ministries, [ministry]) : undefined;
 }
 
-/** Event check-ins matching the filter. Needs `members` left-joined. */
+/** Event check-ins matching the filter (a ministry, or leaders / staff). Needs `members` left-joined. */
 function eventPersonScope(filter: string | undefined): SQL | undefined {
   if (filter === "leaders") return isNotNull(eventCheckIns.leaderId);
   if (filter === "staff") return isNotNull(eventCheckIns.staffId);
   return filter ? arrayContains(members.ministries, [filter]) : undefined;
 }
 
-/** Most recent dates with any service or event check-ins (of `ministry`, when given), newest first. */
+// ---- Sunday services (Sunday Attendance)
+
+/** Most recent dates with service check-ins (of `ministry`, when given), newest first. */
 export async function getRecentServiceDates(
   services: readonly string[],
   ministry?: string,
   limit = 8
 ): Promise<{ date: string; total: number }[]> {
-  const [serviceRows, eventRows] = await Promise.all([
-    db
-      .select({ date: checkIns.serviceDate, total: count() })
-      .from(checkIns)
-      .innerJoin(members, eq(checkIns.memberId, members.id))
-      .where(and(inArray(checkIns.service, [...services]), ministryScope(ministry)))
-      .groupBy(checkIns.serviceDate)
-      .orderBy(desc(checkIns.serviceDate))
-      .limit(limit),
-    db
-      .select({ date: events.eventDate, total: count() })
-      .from(eventCheckIns)
-      .innerJoin(events, eq(eventCheckIns.eventId, events.id))
-      .leftJoin(members, eq(eventCheckIns.memberId, members.id))
-      .where(eventPersonScope(ministry))
-      .groupBy(events.eventDate)
-      .orderBy(desc(events.eventDate))
-      .limit(limit),
-  ]);
-  return [...sumByDate([...serviceRows, ...eventRows])]
-    .map(([date, total]) => ({ date, total }))
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, limit);
+  return db
+    .select({ date: checkIns.serviceDate, total: count() })
+    .from(checkIns)
+    .innerJoin(members, eq(checkIns.memberId, members.id))
+    .where(and(inArray(checkIns.service, [...services]), ministryScope(ministry)))
+    .groupBy(checkIns.serviceDate)
+    .orderBy(desc(checkIns.serviceDate))
+    .limit(limit);
 }
 
-/**
- * Service and event check-ins (of `ministry`, when given) per date ("YYYY-MM-DD" → count)
- * between two dates, inclusive — for the calendar.
- */
+/** Service check-ins (of `ministry`, when given) per date between two dates, inclusive — for the calendar. */
 export async function getCheckInCountsByDate(
   from: string,
   to: string,
   services: readonly string[],
   ministry?: string
 ): Promise<Map<string, number>> {
-  const [serviceRows, eventRows] = await Promise.all([
-    db
-      .select({ date: checkIns.serviceDate, total: count() })
-      .from(checkIns)
-      .innerJoin(members, eq(checkIns.memberId, members.id))
-      .where(
-        and(
-          gte(checkIns.serviceDate, from),
-          lte(checkIns.serviceDate, to),
-          inArray(checkIns.service, [...services]),
-          ministryScope(ministry)
-        )
-      )
-      .groupBy(checkIns.serviceDate),
+  const rows = await db
+    .select({ date: checkIns.serviceDate, total: count() })
+    .from(checkIns)
+    .innerJoin(members, eq(checkIns.memberId, members.id))
+    .where(and(gte(checkIns.serviceDate, from), lte(checkIns.serviceDate, to), inArray(checkIns.service, [...services]), ministryScope(ministry)))
+    .groupBy(checkIns.serviceDate);
+  return sumByDate(rows);
+}
+
+// ---- Events (Event Attendance) — church-wide, not limited by service group
+
+/** Event dates (past and upcoming, latest first) with their check-ins matching the filter. */
+export async function getRecentEventDates(filter?: string, limit = 8): Promise<{ date: string; total: number }[]> {
+  const [dates, counts] = await Promise.all([
+    db.selectDistinct({ date: events.eventDate }).from(events).orderBy(desc(events.eventDate)).limit(limit),
     db
       .select({ date: events.eventDate, total: count() })
       .from(eventCheckIns)
       .innerJoin(events, eq(eventCheckIns.eventId, events.id))
       .leftJoin(members, eq(eventCheckIns.memberId, members.id))
-      .where(and(gte(events.eventDate, from), lte(events.eventDate, to), eventPersonScope(ministry)))
+      .where(eventPersonScope(filter))
       .groupBy(events.eventDate),
   ]);
-  return sumByDate([...serviceRows, ...eventRows]);
+  const byDate = sumByDate(counts);
+  return dates.map(({ date }) => ({ date, total: byDate.get(date) ?? 0 }));
+}
+
+/** The date Event Attendance opens on: today if there's an event, else the latest past event, else the next one. */
+export async function getDefaultEventDate(today: string): Promise<string> {
+  const [past] = await db.select({ date: events.eventDate }).from(events).where(lte(events.eventDate, today)).orderBy(desc(events.eventDate)).limit(1);
+  if (past) return past.date;
+  const [next] = await db.select({ date: events.eventDate }).from(events).where(gte(events.eventDate, today)).orderBy(asc(events.eventDate)).limit(1);
+  return next?.date ?? today;
+}
+
+/** Event check-ins matching the filter per date between two dates, inclusive — for the calendar. */
+export async function getEventCheckInCountsByDate(from: string, to: string, filter?: string): Promise<Map<string, number>> {
+  const rows = await db
+    .select({ date: events.eventDate, total: count() })
+    .from(eventCheckIns)
+    .innerJoin(events, eq(eventCheckIns.eventId, events.id))
+    .leftJoin(members, eq(eventCheckIns.memberId, members.id))
+    .where(and(gte(events.eventDate, from), lte(events.eventDate, to), eventPersonScope(filter)))
+    .groupBy(events.eventDate);
+  return sumByDate(rows);
 }
 
 function sumByDate(rows: { date: string; total: number }[]): Map<string, number> {

@@ -34,7 +34,8 @@ const ITEMS: NavItem[] = [
   { href: "/reports", label: "Sunday Reports", Icon: ReportsIcon, group: "Sunday services" },
   { href: "/members", label: "Service Team Members", tabLabel: "Members", Icon: MembersIcon, group: "People" },
   { href: "/leaders", label: "Leaders & Staff", Icon: LeadersIcon, group: "People" },
-  { href: "/events", label: "Events", Icon: EventsIcon },
+  { href: "/events", label: "All Events", tabLabel: "Events", Icon: EventsIcon, group: "Events" },
+  { href: "/event-attendance", label: "Event Attendance", Icon: AttendanceIcon, group: "Events" },
   { href: "/users", label: "Users", Icon: UsersIcon, superAdminOnly: true, group: "Admin" },
   { href: "/settings", label: "Settings", Icon: SettingsIcon, superAdminOnly: true, group: "Admin" },
 ];

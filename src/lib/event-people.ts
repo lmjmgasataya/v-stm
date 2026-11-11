@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import { eventCheckIns, eventRegistrations, leaders, members, staff } from "@/db/schema";
-import { MINISTRY_OPTIONS, groupOfAttending, type ServiceGroup } from "@/lib/constants";
+import { MINISTRY_OPTIONS, SERVICE_GROUP_NAMES, groupOfAttending, isServiceGroup, type ServiceGroup } from "@/lib/constants";
 import type { EventPerson, EventPersonCheckIn, PersonKind } from "@/lib/event-people-shared";
 
 // Everyone who can be checked in to an event: STMs (stm_members), leaders without a serve
@@ -147,10 +147,9 @@ export interface SummarySection {
 }
 
 export interface EventSummaryReport {
+  /** STMs (and leaders) get one section per service group when the event spans several */
   sections: SummarySection[];
   grandTotal: SummaryCounts;
-  /** STMs per ministry × service group, when the event's STMs come from more than one group */
-  byService: { groups: ServiceGroup[]; rows: { label: string; cells: { willAttend: number; present: number }[] }[]; totals: { willAttend: number; present: number }[] } | null;
 }
 
 const zero = (): SummaryCounts => ({ invited: 0, willAttend: 0, wontAttend: 0, checkedIn: 0, walkIns: 0, present: 0 });
@@ -208,46 +207,41 @@ export async function getEventSummary(eventId: number): Promise<EventSummaryRepo
     return a.localeCompare(b);
   });
 
-  // Alphabetical, like the masterlist's summary sheet
-  const stmSection = section("Service team members", stms, [...MINISTRY_OPTIONS].sort());
-  const noMinistry = stms.filter((p) => p.ministries.length === 0);
-  if (noMinistry.length) {
-    const c = { label: "No ministry", ...zero() };
-    for (const p of noMinistry) add(c, p);
-    stmSection.rows.push(c);
-  }
+  // STMs and leaders are split into one section per service group when the event's people
+  // come from more than one (e.g. 2PM & 4PM vs 6PM for the PM & 6PM night)
+  const byGroup = (list: typeof people, groupOf: (p: (typeof people)[number]) => ServiceGroup | undefined) => {
+    const groups = SERVICE_GROUP_NAMES.filter((g) => list.some((p) => groupOf(p) === g));
+    const noGroup = list.filter((p) => !groupOf(p));
+    if (groups.length + (noGroup.length ? 1 : 0) <= 1) return [{ suffix: "", list }];
+    return [
+      ...groups.map((g) => ({ suffix: ` · ${g}`, list: list.filter((p) => groupOf(p) === g) })),
+      ...(noGroup.length ? [{ suffix: " · No service", list: noGroup }] : []),
+    ];
+  };
 
-  const sections = [
-    stmSection,
-    section("Leaders (no serve team)", leaderList, ["Leader", "ENC"]),
-    section("Pastors & staff", staffList, staffLabels),
-  ].filter((s) => s.total.invited || s.total.present);
+  const stmSections = byGroup(stms, (p) => groupOfAttending(p.detail)).map(({ suffix, list }) => {
+    // Alphabetical, like the masterlist's summary sheet
+    const sec = section(`Service team members${suffix}`, list, [...MINISTRY_OPTIONS].sort());
+    const noMinistry = list.filter((p) => p.ministries.length === 0);
+    if (noMinistry.length) {
+      const c = { label: "No ministry", ...zero() };
+      for (const p of noMinistry) add(c, p);
+      sec.rows.push(c);
+    }
+    return sec;
+  });
+  const leaderSections = byGroup(leaderList, (p) => (isServiceGroup(p.detail) ? p.detail : undefined)).map(({ suffix, list }) =>
+    section(`Leaders (no serve team)${suffix}`, list, ["Leader", "ENC"])
+  );
+
+  const sections = [...stmSections, ...leaderSections, section("Pastors & staff", staffList, staffLabels)].filter(
+    (s) => s.total.invited || s.total.present
+  );
 
   const grandTotal = zero();
   for (const p of people) add(grandTotal, p);
 
-  // STM split by service group (e.g. PM vs 6PM for the PM & 6PM night)
-  const groupOf = (p: (typeof people)[number]) => groupOfAttending(p.detail);
-  const groups = [...new Set(stms.map(groupOf).filter((g): g is ServiceGroup => !!g))];
-  let byService: EventSummaryReport["byService"] = null;
-  if (groups.length > 1) {
-    const cell = (list: typeof people) => ({
-      willAttend: list.filter((p) => p.registered === true).length,
-      present: list.filter((p) => p.checkIn).length,
-    });
-    byService = {
-      groups,
-      rows: stmSection.rows
-        .filter((r) => r.label !== "No ministry")
-        .map((r) => ({
-          label: r.label,
-          cells: groups.map((g) => cell(stms.filter((p) => groupOf(p) === g && p.ministries.includes(r.label)))),
-        })),
-      totals: groups.map((g) => cell(stms.filter((p) => groupOf(p) === g))),
-    };
-  }
-
-  return { sections, grandTotal, byService };
+  return { sections, grandTotal };
 }
 
 /** Registered-as-attending count per event, for the events list. */
