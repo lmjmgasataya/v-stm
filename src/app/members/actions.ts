@@ -17,7 +17,7 @@ const DUPLICATE_MESSAGE = "This person (same name and mobile number) is already 
 
 async function readValidated(viewer: Viewer, formData: FormData) {
   const input = readMemberInput(formData);
-  const error = validateMemberInput(input, viewer.services);
+  const error = validateMemberInput(input, viewer.attending);
   if (error) return { error } as const;
   const vgl = await resolveVgl(input.vglId, input.vglName);
   return { values: toMemberValues({ ...input, ...vgl }) } as const;

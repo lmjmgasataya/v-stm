@@ -3,7 +3,7 @@ import { members } from "@/db/schema";
 import { memberScope, type Viewer } from "@/lib/access";
 import { activeMemberCondition, inactiveMemberCondition } from "@/lib/activity";
 import type { ActivityRule } from "@/lib/activity-rule";
-import { MINISTRY_OPTIONS, SERVICE_OPTIONS } from "@/lib/constants";
+import { MINISTRY_OPTIONS, SERVICE_ATTENDING_OPTIONS } from "@/lib/constants";
 import { parseSort, type SortDir } from "@/lib/sort";
 import { MEMBER_SORT_COLUMNS, type MemberSortColumn } from "./sortColumns";
 
@@ -17,7 +17,7 @@ export type MemberStatus = "active" | "inactive" | "all";
 export interface MemberListParams {
   q: string;
   ministry: string;
-  /** Selected services (subset of the viewer's); empty = all of them. */
+  /** Selected service-attending values (subset of the viewer's); empty = all of them. */
   services: string[];
   status: MemberStatus;
   sort: MemberSortColumn;
@@ -42,8 +42,8 @@ export function parseMemberListParams(raw: RawParams | URLSearchParams, viewer: 
   return {
     q: get("q") ?? "",
     ministry: (MINISTRY_OPTIONS as readonly string[]).includes(ministry) ? ministry : "",
-    // Keep the viewer's own order (9AM, 11AM, …) and only services they may see
-    services: viewer.services.filter((s) => getAll("service").includes(s)),
+    // Keep the viewer's own order (9AM & 11AM, 2PM & 4PM, …) and only groups they may see
+    services: viewer.attending.filter((s) => getAll("service").includes(s)),
     status: status === "inactive" || status === "all" ? status : "active",
     sort,
     dir,
@@ -80,11 +80,11 @@ export function memberListWhere(p: MemberListParams, viewer: Viewer, rule: Activ
 export function memberListOrder(p: MemberListParams): SQL[] {
   const column = members[p.sort];
   const direction = p.dir === "asc" ? sql`asc` : sql`desc`;
-  // Service sorts by time slot order (SERVICE_OPTIONS)
+  // Service sorts by group order (SERVICE_ATTENDING_OPTIONS)
   const primary =
     p.sort === "serviceAttending"
       ? sql`array_position(ARRAY[${sql.join(
-          SERVICE_OPTIONS.map((s) => sql`${s}`),
+          SERVICE_ATTENDING_OPTIONS.map((s) => sql`${s}`),
           sql`, `
         )}]::text[], ${column})`
       : column;

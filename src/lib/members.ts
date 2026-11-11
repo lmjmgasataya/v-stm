@@ -79,7 +79,7 @@ export function normalizeMobileNumber(raw: string): string {
   return /^9\d{9}$/.test(digits) ? `0${digits}` : digits;
 }
 
-/** `services` = the services this user may assign (Viewer.services). */
+/** `services` = the service-attending values this user may assign (Viewer.attending). */
 export function validateMemberInput(input: MemberInput, services: readonly string[]): string | null {
   if (!input.lastName) return "Last name is required.";
   if (!input.firstName) return "First name is required.";

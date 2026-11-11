@@ -1,6 +1,6 @@
 import { getTableName } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
-import { checkIns, eventCheckIns, events, members, settings, users } from "@/db/schema";
+import { checkIns, eventCheckIns, eventRegistrations, events, leaders, members, settings, staff, users } from "@/db/schema";
 
 export interface DevopsTable {
   /** Postgres table name (`stm_…`) — also the export route's `?table=` value. */
@@ -25,7 +25,7 @@ function entry<T extends PgTable>(table: T, label: string, omit: (keyof T["$infe
 export const DEVOPS_TABLE_GROUPS: { area: string; tables: DevopsTable[] }[] = [
   {
     area: "Members",
-    tables: [entry(members, "Members (STMs)")],
+    tables: [entry(members, "Members (STMs)"), entry(leaders, "Leaders (no serve team)"), entry(staff, "Pastors & staff")],
   },
   {
     area: "Service check-in",
@@ -33,7 +33,7 @@ export const DEVOPS_TABLE_GROUPS: { area: string; tables: DevopsTable[] }[] = [
   },
   {
     area: "Events",
-    tables: [entry(events, "Events"), entry(eventCheckIns, "Event check-ins")],
+    tables: [entry(events, "Events"), entry(eventRegistrations, "Event registrations"), entry(eventCheckIns, "Event check-ins")],
   },
   {
     area: "Staff & settings",

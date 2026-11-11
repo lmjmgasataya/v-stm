@@ -2,7 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns, members } from "@/db/schema";
 import { checkInScope, memberScope, requireViewer } from "@/lib/access";
-import { SERVICE_GROUPS, SERVICE_GROUP_NAMES, groupOfService, isServiceGroup } from "@/lib/constants";
+import { SERVICE_ATTENDING_BY_GROUP, SERVICE_GROUPS, SERVICE_GROUP_NAMES, groupOfService, isServiceGroup } from "@/lib/constants";
 import { formatDateString, manilaDateString } from "@/lib/date";
 import { CheckInWorkspace, type RosterMember, type TodayCheckIn } from "./CheckInWorkspace";
 
@@ -47,7 +47,7 @@ export default async function CheckInPage({
     <CheckInWorkspace
       // Remount when the day rolls over so optimistic state from yesterday doesn't linger
       key={today}
-      groups={groups.map((name) => ({ name, services: [...SERVICE_GROUPS[name]] }))}
+      groups={groups.map((name) => ({ name, services: [...SERVICE_GROUPS[name]], attending: SERVICE_ATTENDING_BY_GROUP[name] }))}
       initialGroup={initialGroup}
       scoped={!!viewer.serviceGroup}
       todayLabel={formatDateString(today)}

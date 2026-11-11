@@ -4,7 +4,14 @@ import { eq, inArray, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns, members, users } from "@/db/schema";
 import { getSession, type Role } from "@/lib/auth";
-import { SERVICE_GROUPS, SERVICE_OPTIONS, isServiceGroup, type ServiceGroup } from "@/lib/constants";
+import {
+  SERVICE_ATTENDING_BY_GROUP,
+  SERVICE_ATTENDING_OPTIONS,
+  SERVICE_GROUPS,
+  SERVICE_OPTIONS,
+  isServiceGroup,
+  type ServiceGroup,
+} from "@/lib/constants";
 
 /**
  * Who is signed in and what they may see. Role and service group are read from the
@@ -24,6 +31,8 @@ export interface Viewer {
   serviceGroup: ServiceGroup | null;
   /** Services this user may see and check in to. */
   services: readonly string[];
+  /** Service-attending values (SERVICE_ATTENDING_OPTIONS) of the members this user may see. */
+  attending: readonly string[];
   canManageMembers: boolean;
   isSuperAdmin: boolean;
 }
@@ -47,6 +56,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     role,
     serviceGroup,
     services: serviceGroup ? SERVICE_GROUPS[serviceGroup] : SERVICE_OPTIONS,
+    attending: serviceGroup ? [SERVICE_ATTENDING_BY_GROUP[serviceGroup]] : SERVICE_ATTENDING_OPTIONS,
     canManageMembers: role === "admin",
     isSuperAdmin: role === "admin" && serviceGroup === null,
   };
@@ -79,7 +89,7 @@ export function canSeeService(viewer: Viewer, service: string | null | undefined
 
 /** WHERE condition limiting members to the viewer's services (undefined = no limit). */
 export function memberScope(viewer: Viewer): SQL | undefined {
-  return viewer.serviceGroup ? inArray(members.serviceAttending, [...viewer.services]) : undefined;
+  return viewer.serviceGroup ? inArray(members.serviceAttending, [...viewer.attending]) : undefined;
 }
 
 /** WHERE condition limiting check-ins to the viewer's services (undefined = no limit). */

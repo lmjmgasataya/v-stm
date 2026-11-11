@@ -14,7 +14,7 @@ export default async function EventsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Events</h1>
-          <p className="text-sm text-stone-500">Gatherings outside the usual services — check in any service team member.</p>
+          <p className="text-sm text-stone-500">Gatherings outside the usual services — check in service team members, leaders and staff.</p>
         </div>
         {viewer.canManageMembers && (
           <Link href="/events/new" className={primaryBtnCls}>
@@ -66,6 +66,13 @@ function EventSection({ title, items, today, empty }: { title: string; items: Ev
               </div>
               <p className="text-sm">
                 <span className="font-bold text-stm-green">{event.checkedIn}</span> <span className="text-stone-500">checked in</span>
+                {event.preRegistration && (
+                  <>
+                    <span className="text-stone-300"> · </span>
+                    <span className="font-bold text-stone-700">{event.willAttend}</span>{" "}
+                    <span className="text-stone-500">pre-registered</span>
+                  </>
+                )}
               </p>
             </Link>
           ))}

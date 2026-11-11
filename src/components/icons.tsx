@@ -80,6 +80,12 @@ export const SettingsIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const LeadersIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m12 3 2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.3 6.8 19l1-5.8-4.2-4.1 5.8-.8Z" />
+  </Svg>
+);
+
 export const MoreIcon = (p: IconProps) => (
   <Svg {...p}>
     <circle cx="5" cy="12" r="1.2" fill="currentColor" />

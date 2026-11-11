@@ -148,14 +148,14 @@ async function buildImportRows(viewer: Viewer, rawRows: unknown, rawMapping: unk
     let serviceAttending: string | null = null;
     if (!viewer.serviceGroup) {
       serviceAttending = read("serviceAttending", parsedService, null);
-    } else if ("value" in parsedService && parsedService.value && viewer.services.includes(parsedService.value)) {
+    } else if ("value" in parsedService && parsedService.value && viewer.attending.includes(parsedService.value)) {
       serviceAttending = parsedService.value;
-    } else if (!serviceCell && viewer.services.length === 1) {
-      serviceAttending = viewer.services[0];
+    } else if (!serviceCell && viewer.attending.length === 1) {
+      serviceAttending = viewer.attending[0];
     } else {
       serviceError = serviceCell
-        ? `Service "${serviceCell}" isn't one of your services (${viewer.services.join(", ")}).`
-        : `Service attending is required: ${viewer.services.join(" or ")}.`;
+        ? `Service "${serviceCell}" isn't one of your services (${viewer.attending.join(", ")}).`
+        : `Service attending is required: ${viewer.attending.join(" or ")}.`;
     }
     const email = read("email", parseEmail(cell("email")), null);
     const ministries = parseMinistries(cell("ministries"));

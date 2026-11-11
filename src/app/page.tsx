@@ -45,7 +45,7 @@ export default async function DashboardPage() {
             </Link>
           )}
           <Link href="/check-in" className={primaryBtnCls}>
-            Open check-in
+            Open Sunday check-in
           </Link>
         </div>
       </div>

@@ -41,6 +41,22 @@ export function groupOfService(service: string): ServiceGroup | undefined {
   return SERVICE_GROUP_NAMES.find((g) => (SERVICE_GROUPS[g] as readonly string[]).includes(service));
 }
 
+// A member's "service attending" is the service group they belong to, not a single time slot
+// (check-ins still record the exact service). One value per SERVICE_GROUPS key.
+export const SERVICE_ATTENDING_BY_GROUP = {
+  "9AM & 11AM": "9AM & 11AM - Mandurriao",
+  "2PM & 4PM": "2PM & 4PM - Mandurriao",
+  "6PM": "6PM - Mandurriao",
+  "10AM & 1PM": "10AM & 1PM - Lapaz",
+} as const satisfies Record<ServiceGroup, string>;
+
+export const SERVICE_ATTENDING_OPTIONS = SERVICE_GROUP_NAMES.map((g) => SERVICE_ATTENDING_BY_GROUP[g]);
+
+/** "2PM & 4PM - Mandurriao" → "2PM & 4PM" */
+export function groupOfAttending(attending: string | null | undefined): ServiceGroup | undefined {
+  return SERVICE_GROUP_NAMES.find((g) => SERVICE_ATTENDING_BY_GROUP[g] === attending);
+}
+
 export const ROLE_OPTIONS = ["admin", "volunteer"] as const;
 
 export const GENDER_OPTIONS = ["Male", "Female"] as const;

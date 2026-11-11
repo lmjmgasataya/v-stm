@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp, integer, date, uniqueIndex, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, integer, date, uniqueIndex, index, jsonb, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Every table is prefixed `stm_` because this app shares its database with v-1.
@@ -40,6 +40,8 @@ export const members = pgTable(
     // Comma-joined DISCIPLESHIP_JOURNEY_STEPS, same format as v-1's victory_group_leaders
     discipleshipJourneyCompleted: text("discipleship_journey_completed"),
     ministries: text("ministries").array().notNull().default(sql`'{}'::text[]`),
+    // "Submitted the Service Team Members Profile?" from the 2026 masterlist; null = not recorded
+    profileSubmitted: boolean("profile_submitted"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -69,6 +71,43 @@ export const checkIns = pgTable(
   ]
 );
 
+// Leaders who aren't on a serve team (invited to events, but not STMs). `isEnc` marks the
+// ENC leaders, counted as their own row in event summaries.
+export const leaders = pgTable(
+  "stm_leaders",
+  {
+    id: serial("id").primaryKey(),
+    lastName: text("last_name").notNull(),
+    firstName: text("first_name").notNull(),
+    nickname: text("nickname"),
+    // A SERVICE_GROUPS key ("9AM & 11AM"); null = unknown
+    serviceGroup: text("service_group"),
+    isEnc: boolean("is_enc").notNull().default(false),
+    // Their own Victory Group leader, as written in the masterlist
+    vgLeaderName: text("vg_leader_name"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("stm_leaders_person_uq").on(sql`lower(${t.lastName})`, sql`lower(${t.firstName})`)]
+);
+
+// Pastors, their wives and church staff. `ministry` is free text with its own values
+// ("Pastor", "Pastor's Wife", "Admin", "Maintenance", …), unrelated to MINISTRY_OPTIONS.
+export const staff = pgTable(
+  "stm_staff",
+  {
+    id: serial("id").primaryKey(),
+    // '' when unknown (some staff go by one name)
+    lastName: text("last_name").notNull().default(""),
+    firstName: text("first_name").notNull(),
+    nickname: text("nickname"),
+    ministry: text("ministry").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("stm_staff_person_uq").on(sql`lower(${t.lastName})`, sql`lower(${t.firstName})`)]
+);
+
 // Custom events outside the usual services (e.g. a weekday prayer night). Shared by every
 // staff user; each one only sees and checks in members within their own services.
 export const events = pgTable(
@@ -79,10 +118,40 @@ export const events = pgTable(
     // Manila calendar date (YYYY-MM-DD)
     eventDate: date("event_date").notNull(),
     notes: text("notes"),
+    // On: check-in lists the people pre-registered as attending (stm_event_registrations);
+    // anyone else can still be checked in, tagged as a walk-in.
+    preRegistration: boolean("pre_registration").notNull().default(false),
     createdById: integer("created_by_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("stm_events_date_idx").on(t.eventDate)]
+);
+
+// Exactly one of memberId / leaderId / staffId is set (an STM, a leader, or a pastor/staff).
+const onePerson = (t: { memberId: unknown; leaderId: unknown; staffId: unknown }, name: string) =>
+  check(name, sql`num_nonnulls(${t.memberId}, ${t.leaderId}, ${t.staffId}) = 1`);
+
+// Who was invited to a pre-registration event and their RSVP ("I will attend": YES/NO).
+export const eventRegistrations = pgTable(
+  "stm_event_registrations",
+  {
+    id: serial("id").primaryKey(),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").references(() => members.id, { onDelete: "cascade" }),
+    leaderId: integer("leader_id").references(() => leaders.id, { onDelete: "cascade" }),
+    staffId: integer("staff_id").references(() => staff.id, { onDelete: "cascade" }),
+    // true = will attend (pre-registered); false = replied no
+    attending: boolean("attending").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    onePerson(t, "stm_event_registrations_one_person"),
+    uniqueIndex("stm_event_registrations_member_uq").on(t.eventId, t.memberId).where(sql`${t.memberId} is not null`),
+    uniqueIndex("stm_event_registrations_leader_uq").on(t.eventId, t.leaderId).where(sql`${t.leaderId} is not null`),
+    uniqueIndex("stm_event_registrations_staff_uq").on(t.eventId, t.staffId).where(sql`${t.staffId} is not null`),
+  ]
 );
 
 // Kept apart from stm_check_ins so service attendance numbers aren't mixed with events.
@@ -93,13 +162,21 @@ export const eventCheckIns = pgTable(
     eventId: integer("event_id")
       .notNull()
       .references(() => events.id, { onDelete: "cascade" }),
-    memberId: integer("member_id")
-      .notNull()
-      .references(() => members.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").references(() => members.id, { onDelete: "cascade" }),
+    leaderId: integer("leader_id").references(() => leaders.id, { onDelete: "cascade" }),
+    staffId: integer("staff_id").references(() => staff.id, { onDelete: "cascade" }),
+    // Pre-registration events only: checked in without being pre-registered as attending
+    isWalkIn: boolean("is_walk_in").notNull().default(false),
     checkedInAt: timestamp("checked_in_at", { withTimezone: true }).notNull().defaultNow(),
     checkedInById: integer("checked_in_by_id").references(() => users.id, { onDelete: "set null" }),
   },
-  (t) => [uniqueIndex("stm_event_check_ins_event_member_uq").on(t.eventId, t.memberId)]
+  (t) => [
+    onePerson(t, "stm_event_check_ins_one_person"),
+    // Postgres treats NULLs as distinct, so each index only constrains its own kind of person
+    uniqueIndex("stm_event_check_ins_event_member_uq").on(t.eventId, t.memberId),
+    uniqueIndex("stm_event_check_ins_event_leader_uq").on(t.eventId, t.leaderId),
+    uniqueIndex("stm_event_check_ins_event_staff_uq").on(t.eventId, t.staffId),
+  ]
 );
 
 // Global app settings, one JSON value per key (e.g. "activity_rule"). Read through
@@ -114,3 +191,5 @@ export type User = typeof users.$inferSelect;
 export type Member = typeof members.$inferSelect;
 export type CheckIn = typeof checkIns.$inferSelect;
 export type Event = typeof events.$inferSelect;
+export type Leader = typeof leaders.$inferSelect;
+export type Staff = typeof staff.$inferSelect;

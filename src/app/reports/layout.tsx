@@ -6,7 +6,7 @@ export default async function ReportsLayout({ children }: { children: React.Reac
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Reports</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Sunday Reports</h1>
         <ReportTabs />
       </div>
       {children}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireViewer } from "@/lib/access";
-import { SERVICE_GROUPS, SERVICE_GROUP_NAMES, isServiceGroup } from "@/lib/constants";
+import { SERVICE_ATTENDING_BY_GROUP, SERVICE_GROUP_NAMES, isServiceGroup } from "@/lib/constants";
 import { BarList, type BarRow } from "@/components/BarList";
 import { MinistryName } from "@/components/MinistryName";
 import { StatCard, percent } from "@/components/StatCard";
@@ -14,9 +14,9 @@ export default async function DemographicsPage({ searchParams }: { searchParams:
   // Filter by service group. A group user only has their own group, so they get no filter.
   const groups = viewer.serviceGroup ? [] : SERVICE_GROUP_NAMES;
   const group = isServiceGroup(groupParam) && groups.includes(groupParam) ? groupParam : null;
-  const services = group ? SERVICE_GROUPS[group] : viewer.services;
+  const attending = group ? [SERVICE_ATTENDING_BY_GROUP[group]] : viewer.attending;
   const rule = await getActivityRule();
-  const d = await getDemographics(viewer, group ? services : null, rule);
+  const d = await getDemographics(viewer, group ? attending : null, rule);
 
   const toRows = (counts: Count[], label?: (c: Count) => React.ReactNode): BarRow[] =>
     counts.map((c) => ({ label: label ? label(c) : c.label, text: c.label, value: c.value, muted: c.label === NOT_SET }));
@@ -90,8 +90,8 @@ export default async function DemographicsPage({ searchParams }: { searchParams:
             <ChartCard title="Victory Group Leader" subtitle={`of ${d.total} members`}>
               <BarList rows={toRows(d.vgl)} total={d.total} />
             </ChartCard>
-            {/* Split by service whenever the view spans more than one (e.g. 2PM vs 4PM) */}
-            {services.length > 1 && (
+            {/* Split by service group whenever the view spans more than one */}
+            {attending.length > 1 && (
               <ChartCard title="Service attending" subtitle={`of ${d.total} members`}>
                 <BarList rows={toRows(d.services)} total={d.total} />
               </ChartCard>

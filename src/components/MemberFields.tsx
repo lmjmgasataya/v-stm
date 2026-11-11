@@ -23,7 +23,7 @@ export function MemberFields({
   showActive = false,
 }: {
   vglOptions: VglOption[];
-  /** The signed-in user's services (Viewer.services). */
+  /** The signed-in user's service-attending values (Viewer.attending). */
   serviceOptions: readonly string[];
   defaultValues?: Member;
   showActive?: boolean;

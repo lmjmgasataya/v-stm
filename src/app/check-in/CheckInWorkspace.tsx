@@ -33,6 +33,8 @@ export interface TodayCheckIn {
 interface Group {
   name: string;
   services: string[];
+  /** The members.serviceAttending value of this group's members */
+  attending: string;
 }
 
 type OptimisticUpdate = { type: "add"; checkIns: TodayCheckIn[] } | { type: "remove"; memberId: number; service: string };
@@ -141,7 +143,7 @@ export function CheckInWorkspace({
       roster.filter(
         (m) =>
           (!ministry || m.ministries.includes(ministry)) &&
-          (showAll || group.services.includes(m.serviceAttending ?? "") || byMember.has(m.id))
+          (showAll || m.serviceAttending === group.attending || byMember.has(m.id))
       ),
     [roster, ministry, showAll, group, byMember]
   );
@@ -162,7 +164,7 @@ export function CheckInWorkspace({
     .filter((m) => byMember.has(m.id))
     .sort((a, b) => latest(byMember.get(b.id)).localeCompare(latest(byMember.get(a.id)))); // latest first
 
-  const assignedCount = roster.filter((m) => group.services.includes(m.serviceAttending ?? "")).length;
+  const assignedCount = roster.filter((m) => m.serviceAttending === group.attending).length;
   const countFor = (service: string) => optimisticCheckIns.filter((c) => c.service === service).length;
 
   function handleCheckIn(member: RosterMember) {
@@ -249,7 +251,7 @@ export function CheckInWorkspace({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Check-in{scoped && ` · ${group.name}`}</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Sunday Check-in{scoped && ` · ${group.name}`}</h1>
         <p className="text-sm text-stone-500">{todayLabel}</p>
       </div>
 
@@ -427,9 +429,7 @@ function MemberRow({
 }) {
   const details = [
     ministryList(member.ministries),
-    member.serviceAttending && (group.services.length > 1 || member.serviceAttending !== group.services[0])
-      ? `Usually ${timeOf(member.serviceAttending)}${group.services.includes(member.serviceAttending) ? "" : ` (${placeOf(member.serviceAttending)})`}`
-      : null,
+    member.serviceAttending && member.serviceAttending !== group.attending ? `Usually ${member.serviceAttending}` : null,
     member.vglName && `VGL: ${member.vglName}`,
   ].filter(Boolean);
 

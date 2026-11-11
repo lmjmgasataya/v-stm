@@ -9,9 +9,9 @@ export default async function NewMemberPage() {
 
   return (
     <div>
-      <Breadcrumbs items={[{ label: "Members", href: "/members" }, { label: "Add STM" }]} />
+      <Breadcrumbs items={[{ label: "Service Team Members", href: "/members" }, { label: "Add STM" }]} />
       <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900 mb-4">Add service team member</h1>
-      <NewMemberForm vglOptions={vglOptions} serviceOptions={viewer.services} />
+      <NewMemberForm vglOptions={vglOptions} serviceOptions={viewer.attending} />
     </div>
   );
 }

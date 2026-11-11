@@ -3,13 +3,17 @@ import { asc, count, desc, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { eventCheckIns, events } from "@/db/schema";
 import { manilaDateString } from "@/lib/date";
+import { getWillAttendCounts } from "@/lib/event-people";
 
 export interface EventSummary {
   id: number;
   name: string;
   eventDate: string;
   notes: string | null;
+  preRegistration: boolean;
   checkedIn: number;
+  /** Pre-registered as attending (pre-registration events only) */
+  willAttend: number;
 }
 
 /**
@@ -18,7 +22,13 @@ export interface EventSummary {
  */
 export async function getEventsWithCounts(): Promise<{ upcoming: EventSummary[]; past: EventSummary[] }> {
   const today = manilaDateString();
-  const columns = { id: events.id, name: events.name, eventDate: events.eventDate, notes: events.notes };
+  const columns = {
+    id: events.id,
+    name: events.name,
+    eventDate: events.eventDate,
+    notes: events.notes,
+    preRegistration: events.preRegistration,
+  };
   const [upcoming, past, counts] = await Promise.all([
     db.select(columns).from(events).where(gte(events.eventDate, today)).orderBy(asc(events.eventDate), asc(events.name)),
     db.select(columns).from(events).where(lt(events.eventDate, today)).orderBy(desc(events.eventDate), asc(events.name)),
@@ -28,7 +38,12 @@ export async function getEventsWithCounts(): Promise<{ upcoming: EventSummary[];
       .groupBy(eventCheckIns.eventId),
   ]);
   const byEvent = new Map(counts.map((c) => [c.eventId, c.total]));
-  const withCount = (e: Omit<EventSummary, "checkedIn">) => ({ ...e, checkedIn: byEvent.get(e.id) ?? 0 });
+  const willAttend = await getWillAttendCounts([...upcoming, ...past].filter((e) => e.preRegistration).map((e) => e.id));
+  const withCount = (e: Omit<EventSummary, "checkedIn" | "willAttend">) => ({
+    ...e,
+    checkedIn: byEvent.get(e.id) ?? 0,
+    willAttend: willAttend.get(e.id) ?? 0,
+  });
   return { upcoming: upcoming.map(withCount), past: past.map(withCount) };
 }
 
@@ -49,9 +64,3 @@ export async function getEventOrNotFound(rawId: string) {
   return event;
 }
 
-export async function getEventCheckIns(eventId: number) {
-  return db
-    .select({ memberId: eventCheckIns.memberId, checkedInAt: eventCheckIns.checkedInAt })
-    .from(eventCheckIns)
-    .where(eq(eventCheckIns.eventId, eventId));
-}

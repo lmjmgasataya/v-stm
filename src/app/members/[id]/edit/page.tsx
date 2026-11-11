@@ -22,9 +22,9 @@ export default async function EditMemberPage({ params }: { params: Promise<{ id:
 
   return (
     <div>
-      <Breadcrumbs items={[{ label: "Members", href: "/members" }, { label: memberDisplayName(member) }]} />
+      <Breadcrumbs items={[{ label: "Service Team Members", href: "/members" }, { label: memberDisplayName(member) }]} />
       <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900 mb-4">Edit {memberDisplayName(member)}</h1>
-      <EditMemberForm member={member} vglOptions={vglOptions} serviceOptions={viewer.services} />
+      <EditMemberForm member={member} vglOptions={vglOptions} serviceOptions={viewer.attending} />
     </div>
   );
 }

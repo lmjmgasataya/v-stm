@@ -46,7 +46,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Service team members</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Service Team Members</h1>
         {viewer.canManageMembers && (
           <div className="flex flex-wrap justify-end gap-2">
             {/* Everything matching the current filters, every page — same columns as the import template */}
@@ -58,7 +58,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
             >
               Export to Excel
             </a>
-            <ImportMembersModal services={viewer.services} scoped={!!viewer.serviceGroup} />
+            <ImportMembersModal services={viewer.attending} scoped={!!viewer.serviceGroup} />
             <Link href="/members/new" className={primaryBtnCls}>
               + Add STM
             </Link>
@@ -75,9 +75,9 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
           options={MINISTRY_OPTIONS}
           optionLabels={Object.fromEntries(MINISTRY_OPTIONS.map((m) => [m, ministryLabel(m)]))}
         />
-        {viewer.services.length > 1 && (
+        {viewer.attending.length > 1 && (
           <ServiceMultiSelect
-            options={viewer.services}
+            options={viewer.attending}
             selected={p.services}
             allLabel={viewer.serviceGroup ? `All ${viewer.serviceGroup}` : "All services"}
           />

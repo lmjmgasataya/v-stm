@@ -7,9 +7,8 @@ import {
   GENDER_OPTIONS,
   LIFESTAGE_OPTIONS,
   MINISTRY_OPTIONS,
-  SERVICE_OPTIONS,
 } from "@/lib/constants";
-import { normalizeService } from "@/lib/services";
+import { normalizeAttending } from "@/lib/services";
 
 export type MemberColumn =
   | "lastName"
@@ -74,7 +73,7 @@ const TEMPLATE_EXAMPLE_ROW = [
   "Single",
   "28",
   "Male",
-  "9AM - Mandurriao",
+  "9AM & 11AM - Mandurriao",
   "juan@example.com",
   "Maria Santos",
   "One2One; Victory Weekend/Victory Day",
@@ -246,11 +245,11 @@ export function parseLifestage(raw: string): Parsed<string | null> {
   return { invalid: raw };
 }
 
-/** Free-text service ("9am", "9:00 AM Mandurriao") → a SERVICE_OPTIONS value. */
+/** Free-text service ("9am", "AM", "2 & 4PM", "La Paz") → a SERVICE_ATTENDING_OPTIONS value. */
 export function parseService(raw: string): Parsed<string | null> {
   if (!raw.trim()) return { value: null };
-  const service = normalizeService(raw);
-  return service && (SERVICE_OPTIONS as readonly string[]).includes(service) ? { value: service } : { invalid: raw };
+  const attending = normalizeAttending(raw);
+  return attending ? { value: attending } : { invalid: raw };
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

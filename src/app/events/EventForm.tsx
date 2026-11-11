@@ -34,6 +34,22 @@ export function EventForm({ event, defaultDate, canDelete = false }: { event?: E
         />
       </div>
 
+      <label className="flex items-start gap-2 text-sm text-stone-700">
+        <input
+          type="checkbox"
+          name="preRegistration"
+          defaultChecked={event?.preRegistration ?? false}
+          className="mt-0.5 h-4 w-4 accent-stm-brand"
+        />
+        <span>
+          Pre-registration
+          <span className="block text-xs text-stone-500">
+            Check-in lists only the people marked as attending (set on the event&apos;s Pre-registration page); anyone else is
+            checked in as a walk-in.
+          </span>
+        </span>
+      </label>
+
       <FormError message={state?.error} />
 
       <div className="flex flex-wrap items-center justify-between gap-2">

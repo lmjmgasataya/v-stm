@@ -48,6 +48,9 @@ export function MembersTable({
               <SortableTh key={column} column={column} label={label} sort={sort} dir={dir} />
             ))}
             <th className="px-4 py-3 font-medium">Ministry</th>
+            <th className="px-4 py-3 font-medium whitespace-nowrap" title="Submitted the Service Team Members Profile?">
+              Profile
+            </th>
             {activity && <th className="px-4 py-3 font-medium whitespace-nowrap">Last served</th>}
             {canEdit && <th className="px-4 py-3" />}
           </tr>
@@ -100,6 +103,15 @@ export function MembersTable({
                     </span>
                   ))}
                 </div>
+              </td>
+              <td className="px-4 py-2.5 whitespace-nowrap">
+                {m.profileSubmitted === null ? (
+                  <span className="text-stone-400">—</span>
+                ) : m.profileSubmitted ? (
+                  <span className="text-stm-green font-medium">Submitted</span>
+                ) : (
+                  <span className="text-stm-amber font-medium">Not yet</span>
+                )}
               </td>
               {activity && (
                 <td className="px-4 py-2.5 text-stone-600 whitespace-nowrap">

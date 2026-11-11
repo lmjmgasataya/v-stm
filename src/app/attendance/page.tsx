@@ -5,7 +5,10 @@ import {
   getCheckInCountsByDate,
   getEventAttendance,
   getRecentServiceDates,
+  isKindFilter,
+  KIND_FILTERS,
   type AttendanceRow,
+  type KindFilter,
 } from "@/lib/attendance";
 import { MINISTRY_OPTIONS, ministryLabel, ministryList } from "@/lib/constants";
 import { MinistryName } from "@/components/MinistryName";
@@ -18,6 +21,18 @@ import { AttendanceCalendar } from "./AttendanceCalendar";
 const SORTS = { last: "Last name", first: "First name", time: "Check-in time" } as const;
 type SortKey = keyof typeof SORTS;
 const SORT_KEYS = Object.keys(SORTS) as SortKey[];
+
+const KIND_BADGES: Partial<Record<AttendanceRow["kind"], string>> = { leader: "Leader", staff: "Pastor/Staff" };
+
+/** "" = everyone; a ministry = STMs in it; "leaders" / "staff" = those lists */
+function matchesFilter(r: AttendanceRow, filter: string) {
+  if (!filter) return true;
+  if (filter === "leaders") return r.kind === "leader";
+  if (filter === "staff") return r.kind === "staff";
+  return r.kind === "stm" && r.ministries.includes(filter);
+}
+
+const filterLabel = (filter: string) => (isKindFilter(filter) ? KIND_FILTERS[filter] : ministryLabel(filter));
 
 const byText = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base" });
 const COMPARE: Record<SortKey, (a: AttendanceRow, b: AttendanceRow) => number> = {
@@ -39,7 +54,9 @@ export default async function AttendancePage({
   // ?month= only while browsing the calendar; otherwise show the selected date's month
   const month = isMonthString(sp.month) ? sp.month : date.slice(0, 7);
   const lastOfMonth = new Date(`${addMonths(month, 1)}-01T00:00:00Z`).getTime() - 24 * 60 * 60 * 1000;
-  const ministry = (MINISTRY_OPTIONS as readonly string[]).includes(sp.ministry ?? "") ? sp.ministry! : "";
+  // A ministry (STMs), or "leaders" / "staff" (people only events have)
+  const ministry =
+    (MINISTRY_OPTIONS as readonly string[]).includes(sp.ministry ?? "") || isKindFilter(sp.ministry) ? sp.ministry! : "";
   const { sort, dir } = parseSort(sp.sort, sp.dir, SORT_KEYS, "last");
 
   // Builds an attendance link that keeps the current filter/sort unless overridden
@@ -69,23 +86,30 @@ export default async function AttendancePage({
   // every chip shows its own count even while another ministry is selected)
   const ministryCounts = MINISTRY_OPTIONS.map((m) => ({
     ministry: m,
-    count: new Set(all.filter((r) => r.ministries.includes(m)).map((r) => r.memberId)).size,
+    count: new Set(all.filter((r) => matchesFilter(r, m)).map((r) => r.key)).size,
   }));
-  const allMembers = new Set(all.map((r) => r.memberId)).size;
+  // Leaders / Pastors & Staff chips only when they were at an event that day (or one is selected)
+  const kindCounts = (Object.keys(KIND_FILTERS) as KindFilter[])
+    .map((k) => ({ filter: k, count: new Set(all.filter((r) => matchesFilter(r, k)).map((r) => r.key)).size }))
+    .filter((k) => k.count > 0 || k.filter === ministry);
+  const allMembers = new Set(all.map((r) => r.key)).size;
 
   const sign = dir === "asc" ? 1 : -1;
   const prepare = (rows: AttendanceRow[]) =>
-    rows.filter((r) => !ministry || r.ministries.includes(ministry)).sort((a, b) => sign * COMPARE[sort](a, b));
+    rows.filter((r) => matchesFilter(r, ministry)).sort((a, b) => sign * COMPARE[sort](a, b));
   const serviceCards = services.map(({ service, rows }) => ({ key: service, title: service, href: undefined, rows: prepare(rows) }));
   const eventCards = dayEvents.map(({ event, rows }) => ({
     key: `event-${event.id}`,
+    preRegistration: event.preRegistration,
     title: `★ ${event.name}`,
     href: `/events/${event.id}`,
     rows: prepare(rows),
   }));
   const shownAll = [...serviceCards, ...eventCards].flatMap((s) => s.rows);
-  const uniqueMembers = new Set(shownAll.map((r) => r.memberId)).size;
-  const filterNote = ministry ? `${ministryLabel(ministry)} only` : undefined;
+  const uniqueMembers = new Set(shownAll.map((r) => r.key)).size;
+  const walkIns = eventCards.flatMap((c) => c.rows).filter((r) => r.isWalkIn).length;
+  const showWalkIns = eventCards.some((c) => c.preRegistration);
+  const filterNote = ministry ? `${filterLabel(ministry)} only` : undefined;
 
   const chipCls = (active: boolean) =>
     `rounded-lg border px-3 py-1.5 text-sm transition ${
@@ -97,7 +121,7 @@ export default async function AttendancePage({
       {/* Phones: title, calendar, stats. Wider: calendar on the right of both. */}
       <div className="grid gap-6 sm:grid-cols-[1fr_auto] content-start">
         <div className="sm:col-start-1">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Attendance{viewer.serviceGroup && ` · ${viewer.serviceGroup}`}</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Sunday Attendance{viewer.serviceGroup && ` · ${viewer.serviceGroup}`}</h1>
           <p className="text-sm text-stone-500">{formatDateString(date)}</p>
         </div>
 
@@ -123,13 +147,18 @@ export default async function AttendancePage({
             </div>
           )}
 
-          <div className="grid gap-4 grid-cols-2">
+          <div className={`grid gap-4 grid-cols-2 ${showWalkIns ? "lg:grid-cols-3" : ""}`}>
             <StatCard label="Check-ins" value={shownAll.length} hint={filterNote} />
-            <StatCard label="Members served" value={uniqueMembers} hint={filterNote ?? "Counted once across services"} />
+            <StatCard
+              label={eventCards.length ? "People" : "Members served"}
+              value={uniqueMembers}
+              hint={filterNote ?? `Counted once across services${eventCards.length ? " and events" : ""}`}
+            />
+            {showWalkIns && <StatCard label="Event walk-ins" value={walkIns} hint={filterNote ?? "Not pre-registered"} />}
           </div>
 
           <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-3">Filter by ministry</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-3">Filter</h2>
             <div className="flex flex-wrap gap-2">
               <Link href={href({ ministry: "" })} replace scroll={false} className={chipCls(!ministry)} aria-current={!ministry || undefined}>
                 All <span className={`font-bold ${ministry ? "text-stm-brand" : ""}`}>{allMembers}</span>
@@ -149,6 +178,22 @@ export default async function AttendancePage({
                     <span className={active ? "" : "text-stone-600"}>
                       <MinistryName ministry={m} />
                     </span>{" "}
+                    <span className={`font-bold ${active ? "" : "text-stm-brand"}`}>{count}</span>
+                  </Link>
+                );
+              })}
+              {kindCounts.map(({ filter: k, count }) => {
+                const active = k === ministry;
+                return (
+                  <Link
+                    key={k}
+                    href={href({ ministry: active ? "" : k })}
+                    replace
+                    scroll={false}
+                    aria-current={active || undefined}
+                    className={chipCls(active)}
+                  >
+                    <span className={active ? "" : "text-stone-600"}>{KIND_FILTERS[k]}</span>{" "}
                     <span className={`font-bold ${active ? "" : "text-stm-brand"}`}>{count}</span>
                   </Link>
                 );
@@ -231,21 +276,40 @@ function AttendanceCard({
             title
           )}
         </h3>
-        <span className="text-sm font-bold text-stm-green">{rows.length}</span>
+        <span className="text-sm font-bold text-stm-green">
+          {rows.length}
+          {rows.some((r) => r.isWalkIn) && (
+            <span className="font-medium text-stm-amber"> · {rows.filter((r) => r.isWalkIn).length} walk-ins</span>
+          )}
+        </span>
       </div>
       {rows.length === 0 ? (
-        <p className="px-4 py-3 text-sm text-stone-400">{ministry ? `No ${ministryLabel(ministry)} check-ins.` : "No check-ins."}</p>
+        <p className="px-4 py-3 text-sm text-stone-400">{ministry ? `No ${filterLabel(ministry)} check-ins.` : "No check-ins."}</p>
       ) : (
         <ul className="divide-y divide-stone-100">
           {rows.map((r) => (
-            <li key={r.memberId} className="flex items-center justify-between gap-3 px-4 py-2 text-sm">
+            <li key={r.key} className="flex items-center justify-between gap-3 px-4 py-2 text-sm">
               <div className="min-w-0">
                 <p className="text-stone-900 truncate">
-                  {sort === "first" ? `${r.firstName}${r.nickname ? ` (${r.nickname})` : ""} ${r.lastName}` : memberDisplayName(r)}
+                  {sort === "first" || !r.lastName
+                    ? `${r.firstName}${r.nickname ? ` (${r.nickname})` : ""} ${r.lastName}`.trim()
+                    : memberDisplayName(r)}
+                  {KIND_BADGES[r.kind] && (
+                    <span className="ml-2 rounded-full bg-stm-brand/10 px-2 py-0.5 text-[11px] font-semibold text-stm-brand align-middle">
+                      {KIND_BADGES[r.kind]}
+                    </span>
+                  )}
                 </p>
-                <p className="text-xs text-stone-500 truncate">{ministryList(r.ministries)}</p>
+                <p className="text-xs text-stone-500 truncate">
+                  {r.kind === "stm" ? ministryList(r.ministries) : r.ministries.join(", ")}
+                </p>
               </div>
-              <span className="shrink-0 text-xs text-stone-500">{formatTime(r.checkedInAt)}</span>
+              <div className="shrink-0 flex items-center gap-2">
+                {r.isWalkIn && (
+                  <span className="rounded-full bg-stm-amber/15 px-2 py-0.5 text-xs font-semibold text-stm-amber">Walk-in</span>
+                )}
+                <span className="text-xs text-stone-500">{formatTime(r.checkedInAt)}</span>
+              </div>
             </li>
           ))}
         </ul>

@@ -8,6 +8,7 @@ import {
   CheckInIcon,
   EventsIcon,
   HomeIcon,
+  LeadersIcon,
   MembersIcon,
   MoreIcon,
   ReportsIcon,
@@ -15,13 +16,25 @@ import {
   UsersIcon,
 } from "@/components/icons";
 
-const ITEMS = [
+interface NavItem {
+  href: string;
+  label: string;
+  /** Shorter label for the phone tab bar */
+  tabLabel?: string;
+  Icon: (p: { className?: string }) => React.ReactNode;
+  /** Items sharing a group sit together under its heading in the sidebar */
+  group?: string;
+  superAdminOnly?: boolean;
+}
+
+const ITEMS: NavItem[] = [
   { href: "/", label: "Home", Icon: HomeIcon },
-  { href: "/check-in", label: "Check-in", Icon: CheckInIcon },
-  { href: "/members", label: "Members", Icon: MembersIcon },
+  { href: "/check-in", label: "Sunday Check-in", tabLabel: "Check-in", Icon: CheckInIcon, group: "Sunday services" },
+  { href: "/attendance", label: "Sunday Attendance", Icon: AttendanceIcon, group: "Sunday services" },
+  { href: "/reports", label: "Sunday Reports", Icon: ReportsIcon, group: "Sunday services" },
+  { href: "/members", label: "Service Team Members", tabLabel: "Members", Icon: MembersIcon },
   { href: "/events", label: "Events", Icon: EventsIcon },
-  { href: "/attendance", label: "Attendance", Icon: AttendanceIcon },
-  { href: "/reports", label: "Reports", Icon: ReportsIcon },
+  { href: "/leaders", label: "Leaders & Staff", Icon: LeadersIcon },
   { href: "/users", label: "Users", Icon: UsersIcon, superAdminOnly: true },
   { href: "/settings", label: "Settings", Icon: SettingsIcon, superAdminOnly: true },
 ];
@@ -36,20 +49,27 @@ export function SidebarNav({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const isActive = useIsActive();
   return (
     <nav className="flex flex-col gap-1" aria-label="Main">
-      {ITEMS.filter((i) => !i.superAdminOnly || isSuperAdmin).map(({ href, label, Icon }) => {
+      {ITEMS.filter((i) => !i.superAdminOnly || isSuperAdmin).map(({ href, label, Icon, group }, index, items) => {
         const active = isActive(href);
+        // Group heading before the first item of a group, a little gap after its last
+        const startsGroup = group && items[index - 1]?.group !== group;
+        const endsGroup = group && items[index + 1]?.group !== group;
         return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-              active ? "bg-white text-stm-brand-dark shadow-sm" : "text-teal-50/75 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <Icon className={`h-5 w-5 ${active ? "text-stm-brand" : "text-teal-100/60 group-hover:text-white"}`} />
-            {label}
-          </Link>
+          <div key={href} className={`${startsGroup && index > 0 ? "mt-3" : ""} ${endsGroup ? "mb-3" : ""}`}>
+            {startsGroup && (
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-teal-100/50">{group}</p>
+            )}
+            <Link
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                active ? "bg-white text-stm-brand-dark shadow-sm" : "text-teal-50/75 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <Icon className={`h-5 w-5 ${active ? "text-stm-brand" : "text-teal-100/60 group-hover:text-white"}`} />
+              {label}
+            </Link>
+          </div>
         );
       })}
     </nav>
@@ -105,7 +125,7 @@ export function BottomNav({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           </div>
         )}
         <div className="grid grid-cols-5">
-          {tabs.map(({ href, label, Icon }) => {
+          {tabs.map(({ href, label, tabLabel, Icon }) => {
             const active = isActive(href);
             return (
               <Link
@@ -118,7 +138,7 @@ export function BottomNav({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 <span className={pillCls(active)}>
                   <Icon className="h-5 w-5" />
                 </span>
-                {label}
+                {tabLabel ?? label}
               </Link>
             );
           })}

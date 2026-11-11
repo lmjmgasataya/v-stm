@@ -52,13 +52,13 @@ function tally(values: (string | null)[], options: readonly string[]): Count[] {
 }
 
 /**
- * Demographics of active members within the viewer's services, narrowed to `services`
- * (e.g. one service group's) when given. A few hundred rows, so it's counted in JS rather
+ * Demographics of active members within the viewer's services, narrowed to `attending`
+ * (service-attending values, e.g. one service group's) when given. A few hundred rows, so it's counted in JS rather
  * than one GROUP BY per breakdown.
  */
 export async function getDemographics(
   viewer: Viewer,
-  services: readonly string[] | null,
+  attending: readonly string[] | null,
   rule: ActivityRule
 ): Promise<Demographics> {
   const rows = await db
@@ -74,7 +74,7 @@ export async function getDemographics(
     })
     .from(members)
     .where(
-      and(activeMemberCondition(rule), memberScope(viewer), services ? inArray(members.serviceAttending, [...services]) : undefined)
+      and(activeMemberCondition(rule), memberScope(viewer), attending ? inArray(members.serviceAttending, [...attending]) : undefined)
     );
 
   const ages = rows.map((r) => r.age).filter((a): a is number => a !== null);
@@ -106,7 +106,7 @@ export async function getDemographics(
     ],
     services: tally(
       rows.map((r) => r.serviceAttending),
-      services ?? viewer.services
+      attending ?? viewer.attending
     ),
   };
 }
