@@ -80,11 +80,13 @@ export function MemberFields({
           />
           <VglAutocomplete options={vglOptions} defaultId={d?.vglId} defaultName={d?.vglName} />
         </div>
+        {/* One ministry per STM */}
         <CheckboxGroup
           label="Ministry"
           name="ministries"
+          type="radio"
           options={MINISTRY_OPTIONS}
-          defaultValues={d?.ministries ?? []}
+          defaultValues={(d?.ministries ?? []).slice(0, 1)}
           renderLabel={(ministry) => <MinistryName ministry={ministry} />}
           required
         />
@@ -94,6 +96,18 @@ export function MemberFields({
           options={DISCIPLESHIP_JOURNEY_STEPS}
           defaultValues={completedSteps}
         />
+      </Section>
+
+      <Section title="Profile">
+        <label className="flex items-center gap-2 text-sm text-stone-700">
+          <input
+            type="checkbox"
+            name="profileSubmitted"
+            defaultChecked={d?.profileSubmitted ?? false}
+            className="h-4 w-4 accent-stm-brand"
+          />
+          Submitted the Service Team Members Profile
+        </label>
       </Section>
 
       {showActive && (
@@ -125,9 +139,12 @@ function CheckboxGroup({
   defaultValues,
   renderLabel = (option) => option,
   required,
+  type = "checkbox",
 }: {
   label: string;
   name: string;
+  /** "radio" = pick exactly one */
+  type?: "checkbox" | "radio";
   options: readonly string[];
   defaultValues: string[];
   renderLabel?: (option: string) => React.ReactNode;
@@ -145,9 +162,11 @@ function CheckboxGroup({
             className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-3.5 py-1.5 text-sm text-stone-700 cursor-pointer has-[:checked]:border-stm-brand has-[:checked]:bg-stm-brand/5 has-[:checked]:text-stm-brand"
           >
             <input
-              type="checkbox"
+              type={type}
               name={name}
               value={option}
+              // A radio group is required as a whole (the browser checks one is picked)
+              required={type === "radio" && required}
               defaultChecked={defaultValues.includes(option)}
               className="h-4 w-4 accent-stm-brand"
             />

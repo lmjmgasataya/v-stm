@@ -131,7 +131,7 @@ async function main() {
     nickname: string | null;
     serviceAttending: string;
     ministries: Ministry[];
-    profileSubmitted: boolean | null;
+    profileSubmitted: boolean;
     rsvp: { event: EventKey; attending: boolean }[];
   }
   const stms = new Map<string, StmRow>();
@@ -156,7 +156,7 @@ async function main() {
       const override = STM_GROUP_OVERRIDES[key];
       if (override && override !== cfg.group) continue; // the other sheet's listing is the wrong one
       const existing = stms.get(key);
-      const profileSubmitted = yesNo(r[cProfile]);
+      const profileSubmitted = yesNo(r[cProfile]) === true; // blank = Not yet
       if (existing) {
         // Listed on two sheets (serves two service groups): one member, invited to both events
         warnings.push(`${lastName}, ${name.firstName} is on more than one sheet — kept as ${existing.serviceAttending}`);
@@ -307,7 +307,7 @@ async function main() {
     for (const [key, s] of stms) {
       const id = existingMembers.get(key);
       if (id) {
-        if (s.profileSubmitted !== null) await tx.update(members).set({ profileSubmitted: s.profileSubmitted }).where(eq(members.id, id));
+        await tx.update(members).set({ profileSubmitted: s.profileSubmitted }).where(eq(members.id, id));
         memberIds.set(key, id);
         continue;
       }

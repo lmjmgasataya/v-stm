@@ -2,6 +2,9 @@ import { and, asc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { eventCheckIns, eventRegistrations, events, leaders, members, staff } from "@/db/schema";
 import { MINISTRY_OPTIONS, SERVICE_GROUP_NAMES, groupOfAttending, type ServiceGroup } from "@/lib/constants";
+import { NOT_COUNTED_SECTION } from "@/lib/official-count-shared";
+
+export { GROUP_SHORT_LABELS, NOT_COUNTED_SECTION } from "@/lib/official-count-shared";
 
 // The yearly "Service Team Members and Leaders Appreciation Night" (one event per service
 // group, e.g. AM / PM & 6PM / La Paz) and its "official count" — the masterlist's SUMMARY sheet:
@@ -9,14 +12,6 @@ import { MINISTRY_OPTIONS, SERVICE_GROUP_NAMES, groupOfAttending, type ServiceGr
 
 /** Events whose name contains this (any case) are part of the series */
 export const APPRECIATION_NIGHT_NAME = "Service Team Members and Leaders Appreciation Night";
-
-/** Short column headings, like the masterlist */
-export const GROUP_SHORT_LABELS: Record<ServiceGroup, string> = {
-  "9AM & 11AM": "AM",
-  "2PM & 4PM": "PM",
-  "6PM": "6PM",
-  "10AM & 1PM": "La Paz",
-};
 
 export interface OfficialCountRow {
   label: string;
@@ -26,9 +21,6 @@ export interface OfficialCountRow {
   confirmed: number;
   present: number;
 }
-
-/** Rows/sections whose Total and Confirmed aren't counted (shown as "—"): pastors & staff */
-export const NOT_COUNTED_SECTION = "Pastors & staff";
 
 export interface OfficialCount {
   year: string;

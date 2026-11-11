@@ -6,6 +6,7 @@ import { MinistryName } from "@/components/MinistryName";
 import { SortableTh } from "@/components/SortableTh";
 import type { SortDir } from "@/lib/sort";
 import type { MemberSortColumn } from "./sortColumns";
+import { ProfileCheckbox } from "./ProfileCheckbox";
 
 const HEADERS: [MemberSortColumn, string][] = [
   ["lastName", "Last name"],
@@ -105,8 +106,8 @@ export function MembersTable({
                 </div>
               </td>
               <td className="px-4 py-2.5 whitespace-nowrap">
-                {m.profileSubmitted === null ? (
-                  <span className="text-stone-400">—</span>
+                {canEdit ? (
+                  <ProfileCheckbox memberId={m.id} name={`${m.firstName} ${m.lastName}`} value={m.profileSubmitted} />
                 ) : m.profileSubmitted ? (
                   <span className="text-stm-green font-medium">Submitted</span>
                 ) : (

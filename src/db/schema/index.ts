@@ -40,8 +40,8 @@ export const members = pgTable(
     // Comma-joined DISCIPLESHIP_JOURNEY_STEPS, same format as v-1's victory_group_leaders
     discipleshipJourneyCompleted: text("discipleship_journey_completed"),
     ministries: text("ministries").array().notNull().default(sql`'{}'::text[]`),
-    // "Submitted the Service Team Members Profile?" from the 2026 masterlist; null = not recorded
-    profileSubmitted: boolean("profile_submitted"),
+    // "Submitted the Service Team Members Profile?" — Submitted (true) or Not yet (false)
+    profileSubmitted: boolean("profile_submitted").notNull().default(false),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

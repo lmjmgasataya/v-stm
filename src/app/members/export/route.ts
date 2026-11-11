@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     m.active ? "Active" : "Inactive",
     m.lastServed,
     manilaDateString(m.createdAt),
-    m.profileSubmitted === null ? null : m.profileSubmitted ? "Yes" : "No",
+    m.profileSubmitted ? "Yes" : "No",
     m.id,
   ]);
 

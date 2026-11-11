@@ -50,6 +50,13 @@
       "when": 1794391076301,
       "tag": "0006_event_audience",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794396463815,
+      "tag": "0007_profile_submitted_not_null",
+      "breakpoints": true
     }
   ]
 }

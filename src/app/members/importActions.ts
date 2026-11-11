@@ -180,7 +180,7 @@ async function buildImportRows(viewer: Viewer, rawRows: unknown, rawMapping: unk
     const warnings: string[] = [];
     const read = <T,>(field: MemberColumn, parsed: Parsed<T>, fallback: T): T => {
       if ("value" in parsed) return parsed.value;
-      warnings.push(`${MEMBER_COLUMN_LABELS[field]} "${parsed.invalid}" not recognized`);
+      warnings.push(`${MEMBER_COLUMN_LABELS[field]} "${parsed.invalid}" not recognized — left blank`);
       return fallback;
     };
     const age = read("age", parseAge(cell("age")), null);
@@ -206,9 +206,14 @@ async function buildImportRows(viewer: Viewer, rawRows: unknown, rawMapping: unk
     const profileSubmitted = read("profileSubmitted", parseYesNo(cell("profileSubmitted")), null);
     const id = parseMemberId(cell("id"));
     const ministries = parseMinistries(cell("ministries"));
-    if (ministries.unknown.length) warnings.push(`Ministry not recognized: ${ministries.unknown.join(", ")}`);
+    if (ministries.unknown.length) warnings.push(`Ministry not recognized: ${ministries.unknown.join(", ")} — left blank`);
+    // One ministry per STM: keep the first one listed
+    if (ministries.values.length > 1) {
+      warnings.push(`Only one ministry per STM — kept ${ministries.values[0]}, not ${ministries.values.slice(1).join(", ")}`);
+      ministries.values = ministries.values.slice(0, 1);
+    }
     const journey = parseDiscipleshipJourney(cell("discipleshipJourneyCompleted"));
-    if (journey.unknown.length) warnings.push(`Discipleship step not recognized: ${journey.unknown.join(", ")}`);
+    if (journey.unknown.length) warnings.push(`Discipleship step not recognized: ${journey.unknown.join(", ")} — left blank`);
 
     const vglText = cell("vgl");
     const vgl = vglText ? vglLookup.get(squash(vglText)) : undefined;
@@ -273,7 +278,7 @@ async function buildImportRows(viewer: Viewer, rawRows: unknown, rawMapping: unk
       vglName: row.vglName,
       discipleshipJourneyCompleted: journey.values.join(",") || null,
       ministries: ministries.values,
-      profileSubmitted,
+      profileSubmitted: profileSubmitted ?? false, // blank = Not yet
     };
     entries.push({ row, id, values, changes });
   });

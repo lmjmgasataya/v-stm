@@ -1,8 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { MinistryName } from "@/components/MinistryName";
 import { formatDateString } from "@/lib/date";
 import { TINT_CLASSES } from "@/lib/event-summary-columns";
-import { GROUP_SHORT_LABELS, NOT_COUNTED_SECTION, type OfficialCount as OfficialCountData, type OfficialCountRow } from "@/lib/official-count";
+import { GROUP_SHORT_LABELS, NOT_COUNTED_SECTION } from "@/lib/official-count-shared";
+import type { OfficialCount as OfficialCountData, OfficialCountRow } from "@/lib/official-count";
 
 const numCls = "px-3 py-2 text-right tabular-nums";
 const teal = TINT_CLASSES.teal;
@@ -11,10 +15,13 @@ const total = TINT_CLASSES.total;
 
 /**
  * The appreciation night's "official count" (the masterlist's SUMMARY sheet) for one year:
- * invited per service, total invited, confirmed (will attend) and present.
+ * invited per service, total invited, confirmed (will attend) and present. Starts collapsed —
+ * one row per group (STMs, leaders, pastors & staff) plus the grand total — so the events list
+ * below stays in view; the arrow expands the per-ministry details.
  */
 export function OfficialCount({ data }: { data: OfficialCountData }) {
   const { year, years, events, groups, sections, grandTotal } = data;
+  const [expanded, setExpanded] = useState(false);
 
   /** `counted` = false: Total and Confirmed show "—" (pastors & staff aren't part of the count) */
   const cells = (row: OfficialCountRow, strong = false, counted = true) => {
@@ -53,25 +60,39 @@ export function OfficialCount({ data }: { data: OfficialCountData }) {
             ))}
           </p>
         </div>
-        {years.length > 1 && (
-          <div className="flex flex-wrap gap-1.5">
-            {years.map((y) => (
-              <Link
-                key={y}
-                href={y === years[0] ? "/events" : `/events?year=${y}`}
-                aria-current={y === year ? "page" : undefined}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                  y === year ? "bg-stm-brand text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:text-stm-brand"
-                }`}
-              >
-                {y}
-              </Link>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {years.length > 1 && (
+            <div className="flex flex-wrap gap-1.5">
+              {years.map((y) => (
+                <Link
+                  key={y}
+                  href={y === years[0] ? "/events" : `/events?year=${y}`}
+                  aria-current={y === year ? "page" : undefined}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                    y === year ? "bg-stm-brand text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:text-stm-brand"
+                  }`}
+                >
+                  {y}
+                </Link>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            aria-expanded={expanded}
+            aria-controls="official-count-table"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 ring-1 ring-stone-200 hover:text-stm-brand hover:ring-stm-brand/40 transition"
+          >
+            {expanded ? "Hide details" : "Show details"}
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}>
+              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <div className="overflow-x-auto border-t border-stone-100">
+      <div id="official-count-table" className="overflow-x-auto border-t border-stone-100">
         <table className="w-full text-sm">
           <thead className="bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
             <tr>
@@ -86,7 +107,18 @@ export function OfficialCount({ data }: { data: OfficialCountData }) {
               <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${green.bg} ${green.head}`}>Present</th>
             </tr>
           </thead>
-          {sections.map((s) => (
+          {!expanded && (
+            // Collapsed: one row per group
+            <tbody>
+              {sections.map((s) => (
+                <tr key={s.title} className="border-t border-stone-100">
+                  <td className="px-3 py-2 font-medium text-stone-800">{s.title}</td>
+                  {cells(s.total, true, s.title !== NOT_COUNTED_SECTION)}
+                </tr>
+              ))}
+            </tbody>
+          )}
+          {expanded && sections.map((s) => (
             <tbody key={s.title} className="border-t border-stone-200">
               <tr>
                 <th colSpan={groups.length + 4} className="px-3 pt-3 pb-1 text-left text-xs font-semibold uppercase tracking-wide text-stm-brand">

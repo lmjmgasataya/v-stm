@@ -167,8 +167,8 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
                   </div>
                 </li>
                 <li>
-                  Only the name is required (Last + First Name, or one Full Name column). Put several ministries or
-                  discipleship steps in one cell separated by “;” or “,” — ministries: {ministryList(MINISTRY_OPTIONS)}. VGL
+                  Only the name is required (Last + First Name, or one Full Name column). One ministry per STM — {ministryList(MINISTRY_OPTIONS)}. Put several
+                  discipleship steps in one cell separated by “;” or “,”. VGL
                   names are matched to v-1&apos;s VGL list; unmatched names are kept as typed.
                   <br />
                   <span className="font-medium text-stone-700">To fill in details for people already here</span> (age, mobile,
@@ -409,7 +409,7 @@ function ReviewStep({
                     {saving(r) &&
                       r.warnings.map((w) => (
                         <p key={w} className="mt-0.5 text-xs text-stm-amber">
-                          {w} — left blank
+                          {w}
                         </p>
                       ))}
                   </td>

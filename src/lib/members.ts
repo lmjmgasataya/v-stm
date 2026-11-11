@@ -28,6 +28,8 @@ export interface MemberInput {
   vglName: string;
   discipleshipJourneyCompleted: string[];
   ministries: string[];
+  /** Submitted the Service Team Members Profile (else "Not yet") */
+  profileSubmitted: boolean;
   isActive: boolean;
 }
 
@@ -64,7 +66,9 @@ export function readMemberInput(formData: FormData): MemberInput {
     vglId: /^\d+$/.test(vglIdText) ? Number(vglIdText) : null,
     vglName: str(formData, "vglName"),
     discipleshipJourneyCompleted: pick(formData, "discipleshipJourneyCompleted", DISCIPLESHIP_JOURNEY_STEPS),
-    ministries: pick(formData, "ministries", MINISTRY_OPTIONS),
+    // One ministry per STM
+    ministries: pick(formData, "ministries", MINISTRY_OPTIONS).slice(0, 1),
+    profileSubmitted: formData.get("profileSubmitted") === "on",
     // Only the edit form shows the toggle; adding always creates an active member
     isActive: formData.has("isActiveShown") ? formData.get("isActive") === "on" : true,
   };
@@ -93,7 +97,7 @@ export function validateMemberInput(input: MemberInput, services: readonly strin
   if (!input.serviceAttending) return "Service attending is required.";
   if (!services.includes(input.serviceAttending)) return "Select one of your services.";
   if (input.email && !EMAIL_REGEX.test(input.email)) return "Enter a valid email address.";
-  if (input.ministries.length === 0) return "Select at least one ministry.";
+  if (input.ministries.length !== 1) return "Select a ministry.";
   return null;
 }
 
@@ -115,6 +119,7 @@ export function toMemberValues(input: MemberInput) {
     vglName: input.vglName || null,
     discipleshipJourneyCompleted: input.discipleshipJourneyCompleted.join(",") || null,
     ministries: input.ministries,
+    profileSubmitted: input.profileSubmitted,
     isActive: input.isActive,
   };
 }
