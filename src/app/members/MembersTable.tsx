@@ -13,9 +13,7 @@ const HEADERS: [MemberSortColumn, string][] = [
   ["firstName", "First name"],
   ["mobileNumber", "Mobile"],
   ["serviceAttending", "Service"],
-  ["vglName", "VGL"],
   ["lifestage", "Lifestage"],
-  ["age", "Age"],
 ];
 
 export function MembersTable({
@@ -85,17 +83,7 @@ export function MembersTable({
               </td>
               <td className="px-4 py-2.5 text-stone-600 whitespace-nowrap">{m.mobileNumber || "—"}</td>
               <td className="px-4 py-2.5 text-stone-600 whitespace-nowrap">{m.serviceAttending ?? "—"}</td>
-              <td className="px-4 py-2.5 text-stone-600 whitespace-nowrap">
-                {m.vglName ?? "—"}
-                {m.vglName && m.vglId === null && (
-                  <span className="text-stm-amber" title="Typed in, not linked to the VGL list">
-                    {" "}
-                    *
-                  </span>
-                )}
-              </td>
               <td className="px-4 py-2.5 text-stone-600 whitespace-nowrap">{m.lifestage ?? "—"}</td>
-              <td className="px-4 py-2.5 text-stone-600">{m.age ?? "—"}</td>
               <td className="px-4 py-2.5">
                 <div className="flex flex-wrap gap-1">
                   {m.ministries.map((ministry) => (
