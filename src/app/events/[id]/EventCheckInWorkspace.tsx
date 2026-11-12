@@ -187,24 +187,25 @@ export function EventCheckInWorkspace({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-4">
+      {/* Tinted, not white: a summary, so it doesn't look like the search field below */}
+      <div className="rounded-2xl border border-stm-brand/15 bg-stm-brand/[0.06] p-4">
         {preRegistration ? (
           <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
             <p className="text-3xl font-bold text-stm-brand">
               {optimistic.length - walkIns}
-              <span className="text-base font-medium text-stone-400"> of {preRegistered} pre-registered checked in</span>
+              <span className="text-base font-medium text-stone-500"> of {preRegistered} pre-registered checked in</span>
             </p>
             <p className="text-xl font-bold text-stm-amber">
-              {walkIns} <span className="text-sm font-medium text-stone-400">walk-ins</span>
+              {walkIns} <span className="text-sm font-medium text-stone-500">walk-ins</span>
             </p>
             <p className="text-xl font-bold text-stone-700">
-              {optimistic.length} <span className="text-sm font-medium text-stone-400">total present</span>
+              {optimistic.length} <span className="text-sm font-medium text-stone-500">total present</span>
             </p>
           </div>
         ) : (
           // Just the count — not everyone is expected at an event, so no total or progress bar
           <p className="text-3xl font-bold text-stm-brand">
-            {optimistic.length} <span className="text-base font-medium text-stone-400">checked in</span>
+            {optimistic.length} <span className="text-base font-medium text-stone-500">checked in</span>
           </p>
         )}
       </div>

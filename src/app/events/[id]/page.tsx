@@ -17,9 +17,9 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="flex flex-col gap-5">
-      {event.eventDate !== today && (
+      {event.eventDate < today && (
         <p className="rounded-lg border border-stm-amber/40 bg-stm-amber/10 px-3 py-2 text-sm text-stone-700">
-          This event is {event.eventDate > today ? "on a later date" : "in the past"} — check-ins here are still recorded for this event.
+          This event is in the past — check-ins here are still recorded for this event.
         </p>
       )}
 

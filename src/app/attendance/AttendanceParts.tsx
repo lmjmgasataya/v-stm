@@ -185,7 +185,10 @@ export function AttendanceCard({
                 {r.isWalkIn && (
                   <span className="rounded-full bg-stm-amber/15 px-2 py-0.5 text-xs font-semibold text-stm-amber">Walk-in</span>
                 )}
-                <span className="text-xs text-stone-500">{formatTime(r.checkedInAt)}</span>
+                <span className="text-xs text-stone-500 text-right">
+                  {formatTime(r.checkedInAt)}
+                  {r.checkedInBy && <span className="block sm:inline text-stone-400"><span className="hidden sm:inline"> · </span>by {r.checkedInBy}</span>}
+                </span>
               </div>
             </li>
           ))}

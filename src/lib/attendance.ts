@@ -1,6 +1,6 @@
 import { and, arrayContains, asc, count, desc, eq, gte, inArray, isNotNull, lte, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { checkIns, eventCheckIns, events, leaders, members, staff } from "@/db/schema";
+import { checkIns, eventCheckIns, events, leaders, members, staff, users } from "@/db/schema";
 import type { PersonKind } from "@/lib/event-people-shared";
 
 // Service queries take `services` — the signed-in user's services (Viewer.services) — so
@@ -26,6 +26,8 @@ export interface AttendanceRow {
   /** STM: ministries; leader: ["Leader"] / ["ENC"]; staff: [their ministry] */
   ministries: string[];
   checkedInAt: Date;
+  /** Name of the staff account that checked them in; null when that account was deleted (or for very old rows). */
+  checkedInBy: string | null;
   /** Event check-ins on pre-registration events only */
   isWalkIn: boolean;
 }
@@ -45,9 +47,11 @@ export async function getAttendanceByService(
       nickname: members.nickname,
       ministries: members.ministries,
       checkedInAt: checkIns.checkedInAt,
+      checkedInBy: users.name,
     })
     .from(checkIns)
     .innerJoin(members, eq(checkIns.memberId, members.id))
+    .leftJoin(users, eq(checkIns.checkedInById, users.id))
     .where(and(eq(checkIns.serviceDate, serviceDate), inArray(checkIns.service, [...services])))
     .orderBy(asc(members.lastName), asc(members.firstName));
 
@@ -162,6 +166,7 @@ export async function getEventAttendance(
       .select({
         eventId: eventCheckIns.eventId,
         checkedInAt: eventCheckIns.checkedInAt,
+        checkedInBy: users.name,
         isWalkIn: eventCheckIns.isWalkIn,
         member: {
           id: members.id,
@@ -185,11 +190,12 @@ export async function getEventAttendance(
       .leftJoin(members, eq(eventCheckIns.memberId, members.id))
       .leftJoin(leaders, eq(eventCheckIns.leaderId, leaders.id))
       .leftJoin(staff, eq(eventCheckIns.staffId, staff.id))
+      .leftJoin(users, eq(eventCheckIns.checkedInById, users.id))
       .where(eq(events.eventDate, date)),
   ]);
 
   const toRow = (r: (typeof rows)[number]): AttendanceRow & { eventId: number } => {
-    const common = { eventId: r.eventId, checkedInAt: r.checkedInAt, isWalkIn: r.isWalkIn };
+    const common = { eventId: r.eventId, checkedInAt: r.checkedInAt, checkedInBy: r.checkedInBy, isWalkIn: r.isWalkIn };
     if (r.member) return { ...common, ...r.member, key: `stm-${r.member.id}`, kind: "stm" };
     if (r.leader) {
       const { isEnc, ...l } = r.leader;
