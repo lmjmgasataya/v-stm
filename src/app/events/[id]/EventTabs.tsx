@@ -4,8 +4,8 @@ import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-/** Event sub-menu: tabs split by thin separators over a bottom border; unselected tabs are white buttons, the selected one light teal. Pre-registration and Edit are admin-only. */
-export function EventTabs({ eventId, canManage }: { eventId: number; canManage: boolean }) {
+/** Event sub-menu: tabs split by thin separators over a bottom border; unselected tabs are white buttons, the selected one light teal. Pre-registration and Edit are admin-only, and Pre-registration only shows when the event uses it. */
+export function EventTabs({ eventId, canManage, preRegistration }: { eventId: number; canManage: boolean; preRegistration: boolean }) {
   const pathname = usePathname();
   const base = `/events/${eventId}`;
   const tabs = [
@@ -13,7 +13,7 @@ export function EventTabs({ eventId, canManage }: { eventId: number; canManage: 
     { href: `${base}/summary`, label: "Summary" },
     ...(canManage
       ? [
-          { href: `${base}/registrations`, label: "Pre-registration" },
+          ...(preRegistration ? [{ href: `${base}/registrations`, label: "Pre-registration" }] : []),
           { href: `${base}/edit`, label: "Edit event" },
         ]
       : []),

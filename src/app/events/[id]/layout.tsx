@@ -22,7 +22,7 @@ export default async function EventLayout({ children, params }: { children: Reac
           </p>
           {event.notes && <p className="text-sm text-stone-600 mt-1 whitespace-pre-line">{event.notes}</p>}
         </div>
-        <EventTabs eventId={event.id} canManage={viewer.canManageMembers} />
+        <EventTabs eventId={event.id} canManage={viewer.canManageMembers} preRegistration={event.preRegistration} />
       </div>
       {children}
     </div>
