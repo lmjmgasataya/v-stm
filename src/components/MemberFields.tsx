@@ -2,16 +2,8 @@
 
 import type { Member } from "@/db/schema";
 import { Field, Select } from "@/components/form";
-import { MinistryName } from "@/components/MinistryName";
 import { VglAutocomplete } from "@/components/VglAutocomplete";
-import {
-  DISCIPLESHIP_JOURNEY_STEPS,
-  GENDER_OPTIONS,
-  LIFESTAGE_OPTIONS,
-  MINISTRY_OPTIONS,
-  MOBILE_NUMBER_HELP,
-  MOBILE_NUMBER_PATTERN,
-} from "@/lib/constants";
+import { DISCIPLESHIP_JOURNEY_STEPS, GENDER_OPTIONS, LIFESTAGE_OPTIONS, MINISTRY_OPTIONS, MOBILE_NUMBER_HELP, MOBILE_NUMBER_PATTERN } from "@/lib/constants";
 import { MAX_NICKNAME_LENGTH } from "@/lib/members";
 import type { VglOption } from "@/lib/vgl";
 
@@ -87,7 +79,6 @@ export function MemberFields({
           type="radio"
           options={MINISTRY_OPTIONS}
           defaultValues={(d?.ministries ?? []).slice(0, 1)}
-          renderLabel={(ministry) => <MinistryName ministry={ministry} />}
           required
         />
         <CheckboxGroup

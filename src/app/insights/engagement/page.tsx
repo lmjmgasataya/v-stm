@@ -5,7 +5,6 @@ import { FOLLOW_UP_AFTER, LOOKBACK, RECENT, getEngagement, insightsScope, type E
 import { memberDisplayName } from "@/lib/members";
 import { NO_MINISTRY } from "@/lib/reports";
 import { BarList } from "@/components/BarList";
-import { MinistryName } from "@/components/MinistryName";
 import { StatCard, percent } from "@/components/StatCard";
 import { GroupFilter } from "../GroupFilter";
 
@@ -148,7 +147,7 @@ function MemberSection({
                     </Link>
                   </td>
                   <td className="px-4 py-2.5 text-stone-600">
-                    {m.ministry === NO_MINISTRY ? <span className="text-stone-400">—</span> : <MinistryName ministry={m.ministry} />}
+                    {m.ministry === NO_MINISTRY ? <span className="text-stone-400">—</span> : m.ministry}
                   </td>
                   {showService && <td className="px-4 py-2.5 text-stone-600 whitespace-nowrap">{m.serviceAttending?.split(" - ")[0] ?? "—"}</td>}
                   {showLastServed && (

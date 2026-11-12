@@ -8,7 +8,6 @@ import { getActivityRule } from "@/lib/settings";
 import { getAttendanceByService } from "@/lib/attendance";
 import { getEventsAfter, getEventsOn } from "@/lib/events";
 import { formatDateString, manilaDateString } from "@/lib/date";
-import { MinistryName } from "@/components/MinistryName";
 import { StatCard } from "@/components/StatCard";
 import { primaryBtnCls, secondaryBtnCls } from "@/components/form";
 
@@ -72,7 +71,7 @@ export default async function DashboardPage() {
                 href={`/events/${event.id}`}
                 className="group flex flex-col gap-3 rounded-2xl border-2 border-stm-brand/20 bg-white p-4 shadow-sm hover:border-stm-brand/50 transition"
               >
-                <p className="font-semibold text-stone-900 group-hover:text-stm-brand">★ {event.name}</p>
+                <p className="font-semibold text-stone-900 group-hover:text-stm-brand">{event.name}</p>
                 <div className="flex flex-wrap items-end gap-x-5 gap-y-1 text-sm">
                   <p>
                     <span className="text-2xl font-bold text-stm-green">{event.checkedIn}</span>
@@ -160,7 +159,7 @@ export default async function DashboardPage() {
                 className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm hover:border-stm-brand/40 transition"
               >
                 <span className="text-stone-600">
-                  <MinistryName ministry={ministry} />
+                  {ministry}
                 </span>{" "}
                 <span className="font-bold text-stm-brand">{total}</span>
               </Link>

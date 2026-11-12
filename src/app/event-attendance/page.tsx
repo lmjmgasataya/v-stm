@@ -11,7 +11,6 @@ import {
   type KindFilter,
 } from "@/lib/attendance";
 import { MINISTRY_OPTIONS } from "@/lib/constants";
-import { MinistryName } from "@/components/MinistryName";
 import { addMonths, formatDateString, isDateString, isMonthString, manilaDateString } from "@/lib/date";
 import { parseSort } from "@/lib/sort";
 import { StatCard } from "@/components/StatCard";
@@ -64,7 +63,7 @@ export default async function EventAttendancePage({
   const all = dayEvents.flatMap((e) => e.rows);
   const countOf = (f: string) => new Set(all.filter((r) => matchesFilter(r, f)).map((r) => r.key)).size;
   const chips = [
-    ...MINISTRY_OPTIONS.map((m) => ({ value: m as string, label: <MinistryName ministry={m} />, count: countOf(m) })),
+    ...MINISTRY_OPTIONS.map((m) => ({ value: m as string, label: m, count: countOf(m) })),
     ...(Object.keys(KIND_FILTERS) as KindFilter[]).map((k) => ({ value: k as string, label: KIND_FILTERS[k], count: countOf(k) })),
   ];
 

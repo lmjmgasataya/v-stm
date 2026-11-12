@@ -16,7 +16,7 @@ import {
   type MemberColumn,
 } from "@/lib/member-import";
 import { IMPORT_FILE_ACCEPT, readImportFile } from "@/lib/spreadsheet";
-import { MINISTRY_OPTIONS, ministryList } from "@/lib/constants";
+import { MINISTRY_OPTIONS } from "@/lib/constants";
 import {
   importMembers,
   previewMemberImport,
@@ -167,7 +167,7 @@ export function ImportMembersModal({ services, scoped }: { services: readonly st
                   </div>
                 </li>
                 <li>
-                  Only the name is required (Last + First Name, or one Full Name column). One ministry per STM — {ministryList(MINISTRY_OPTIONS)}. Put several
+                  Only the name is required (Last + First Name, or one Full Name column). One ministry per STM — {MINISTRY_OPTIONS.join(", ")}. Put several
                   discipleship steps in one cell separated by “;” or “,”. VGL
                   names are matched to v-1&apos;s VGL list; unmatched names are kept as typed.
                   <br />
@@ -387,7 +387,7 @@ function ReviewStep({
                   </td>
                   <td className="px-3 py-1.5 text-stone-600 whitespace-nowrap">{r.mobileNumber || "—"}</td>
                   <td className="px-3 py-1.5 text-stone-600 whitespace-nowrap">{r.serviceAttending ?? "—"}</td>
-                  <td className="px-3 py-1.5 text-stone-600">{ministryList(r.ministries) || "—"}</td>
+                  <td className="px-3 py-1.5 text-stone-600">{r.ministries.join(", ") || "—"}</td>
                   <td className="px-3 py-1.5 text-stone-600 whitespace-nowrap">
                     {r.vglName ?? "—"}
                     {r.vglName &&

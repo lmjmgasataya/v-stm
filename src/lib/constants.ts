@@ -85,33 +85,6 @@ export const MINISTRY_OPTIONS = [
 
 export type Ministry = (typeof MINISTRY_OPTIONS)[number];
 
-// Shown next to the ministry name everywhere it appears (emoji so it also works in <option>s)
-export const MINISTRY_ICONS: Record<Ministry, string> = {
-  Music: "🎵",
-  Tech: "💻",
-  Admin: "📋",
-  Usher: "🤝",
-  Prayer: "🙏",
-  Production: "🎨",
-  Communication: "📷",
-  Kids: "🧒",
-};
-
-export function ministryIcon(ministry: string): string | undefined {
-  return MINISTRY_ICONS[ministry as Ministry];
-}
-
-/** "🎵 Music" — for plain-text spots (dropdown options, joined lists). In JSX use <MinistryName>. */
-export function ministryLabel(ministry: string): string {
-  const icon = ministryIcon(ministry);
-  return icon ? `${icon} ${ministry}` : ministry;
-}
-
-/** "🎵 Music, 💻 Tech" */
-export function ministryList(ministries: readonly string[]): string {
-  return ministries.map(ministryLabel).join(", ");
-}
-
 export const MOBILE_NUMBER_PATTERN = String.raw`(09\d{9})|(\+639\d{9})|(639\d{9})`;
 export const MOBILE_NUMBER_REGEX = /^(09\d{9}|\+639\d{9}|639\d{9})$/;
 export const MOBILE_NUMBER_HELP = "Enter a valid mobile number: 09XXXXXXXXX, 639XXXXXXXXX, or +639XXXXXXXXX.";

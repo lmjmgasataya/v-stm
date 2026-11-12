@@ -5,7 +5,6 @@ import { formatShortDate } from "@/lib/date";
 import { getMinistryHealth, insightsScope, type MinistryHealthRow } from "@/lib/insights";
 import { NO_MINISTRY } from "@/lib/reports";
 import { getActivityRule } from "@/lib/settings";
-import { MinistryName } from "@/components/MinistryName";
 import { GroupFilter } from "../GroupFilter";
 
 export default async function MinistryHealthPage({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
@@ -98,7 +97,7 @@ function Row({ row, showActive, maxAverage, total = false }: { row: MinistryHeal
       row.ministry
     ) : (
       <Link href={`/members?ministry=${encodeURIComponent(row.ministry)}`} className="hover:text-stm-brand hover:underline">
-        <MinistryName ministry={row.ministry} />
+        {row.ministry}
       </Link>
     );
   return (

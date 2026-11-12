@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { isKindFilter, KIND_FILTERS, type AttendanceRow } from "@/lib/attendance";
-import { ministryLabel, ministryList } from "@/lib/constants";
+
 import { formatTime } from "@/lib/date";
 import { memberDisplayName } from "@/lib/members";
 import type { SortDir } from "@/lib/sort";
@@ -26,7 +26,7 @@ export function matchesFilter(r: AttendanceRow, filter: string) {
   return r.kind === "stm" && r.ministries.includes(filter);
 }
 
-export const filterLabel = (filter: string) => (isKindFilter(filter) ? KIND_FILTERS[filter] : ministryLabel(filter));
+export const filterLabel = (filter: string) => (isKindFilter(filter) ? KIND_FILTERS[filter] : filter);
 
 const pillCls = (active: boolean) =>
   `rounded-full px-3 py-1 text-xs font-semibold transition ${
@@ -178,7 +178,7 @@ export function AttendanceCard({
                   )}
                 </p>
                 <p className="text-xs text-stone-500 truncate">
-                  {r.kind === "stm" ? ministryList(r.ministries) : r.ministries.join(", ")}
+                  {r.ministries.join(", ")}
                 </p>
               </div>
               <div className="shrink-0 flex items-center gap-2">

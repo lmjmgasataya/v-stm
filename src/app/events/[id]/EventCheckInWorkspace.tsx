@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast/ToastContext";
 import { inputCls } from "@/components/form";
 import { Chip, matchesMember } from "@/components/checkInParts";
-import { MinistryName } from "@/components/MinistryName";
-import { MINISTRY_OPTIONS, ministryLabel, ministryList } from "@/lib/constants";
+import { MINISTRY_OPTIONS } from "@/lib/constants";
 import { formatTime } from "@/lib/date";
 import { memberDisplayName } from "@/lib/members";
 import type { EventPerson, EventPersonCheckIn, PersonKind } from "@/lib/event-people-shared";
@@ -162,14 +161,14 @@ export function EventCheckInWorkspace({
 
   function filterLabel() {
     const kind = KIND_FILTERS.find((k) => k.value === filter);
-    return kind ? kind.label : ministryLabel(filter);
+    return kind ? kind.label : filter;
   }
 
   function emptyNotYetMessage() {
     if (visible.some(expected)) {
       return searching
         ? `No match among ${preRegistration ? "pre-registered people" : "people"} not yet checked in.`
-        : "Everyone here is checked in. 🎉";
+        : "Everyone here is checked in.";
     }
     if (searching) return preRegistration ? "No pre-registered person matches your search." : "No one matches your search.";
     return filter ? `No one ${preRegistration ? "pre-registered " : ""}in ${filterLabel()}.` : "No one to check in.";
@@ -246,7 +245,7 @@ export function EventCheckInWorkspace({
           </Chip>
           {ministriesHere.map((option) => (
             <Chip key={option} active={filter === option} onClick={() => setFilter(option)}>
-              <MinistryName ministry={option} />
+              {option}
             </Chip>
           ))}
           {kindsHere.map((k) => (
@@ -362,7 +361,7 @@ const KIND_BADGES: Partial<Record<PersonKind, string>> = { leader: "Leader", sta
 
 function PersonRow({ person, note, children }: { person: EventPerson; note?: string; children: React.ReactNode }) {
   const details = [
-    person.kind === "stm" ? ministryList(person.ministries) : person.ministries.join(", "),
+    person.ministries.join(", "),
     person.kind !== "staff" && person.detail,
     person.vglName && `VGL: ${person.vglName}`,
   ].filter(Boolean);

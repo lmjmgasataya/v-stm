@@ -1,7 +1,6 @@
 import { requireViewer } from "@/lib/access";
 import { getAttendanceByService, getCheckInCountsByDate, getRecentServiceDates, type AttendanceRow } from "@/lib/attendance";
 import { MINISTRY_OPTIONS } from "@/lib/constants";
-import { MinistryName } from "@/components/MinistryName";
 import { addMonths, formatDateString, isDateString, isMonthString, manilaDateString } from "@/lib/date";
 import { parseSort } from "@/lib/sort";
 import { StatCard } from "@/components/StatCard";
@@ -50,7 +49,7 @@ export default async function AttendancePage({
   // every chip shows its own count even while another ministry is selected)
   const ministryCounts = MINISTRY_OPTIONS.map((m) => ({
     value: m,
-    label: <MinistryName ministry={m} />,
+    label: m,
     count: new Set(all.filter((r) => matchesFilter(r, m)).map((r) => r.key)).size,
   }));
   const allMembers = new Set(all.map((r) => r.key)).size;

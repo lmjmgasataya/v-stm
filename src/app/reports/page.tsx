@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { requireViewer } from "@/lib/access";
-import { ministryLabel } from "@/lib/constants";
+
 import { formatDateString, isDateString, manilaDateString } from "@/lib/date";
 import { NO_MINISTRY, getMinistryServiceTable, getServiceDates } from "@/lib/reports";
-import { MinistryName } from "@/components/MinistryName";
 import { secondaryBtnCls } from "@/components/form";
 import { DateSelect } from "./DateSelect";
 import { SundayTrend } from "./SundayTrend";
@@ -108,11 +107,11 @@ export default async function MinistryServiceReportPage({ searchParams }: { sear
                 {table.rows.map((r) => (
                   <tr key={r.ministry}>
                     <th scope="row" className="sticky left-0 bg-white px-4 py-2 text-left font-medium text-stone-700 whitespace-nowrap">
-                      {r.ministry === NO_MINISTRY ? <span className="text-stone-400">{r.ministry}</span> : <MinistryName ministry={r.ministry} />}
+                      {r.ministry === NO_MINISTRY ? <span className="text-stone-400">{r.ministry}</span> : r.ministry}
                     </th>
                     {r.counts.map((n, i) => (
                       <td key={table.services[i]} className="px-1.5 py-1.5 text-center">
-                        <HeatCell value={n} max={max} title={`${ministryLabel(r.ministry)} · ${table.services[i]}: ${n} STM${n === 1 ? "" : "s"}`} />
+                        <HeatCell value={n} max={max} title={`${r.ministry} · ${table.services[i]}: ${n} STM${n === 1 ? "" : "s"}`} />
                       </td>
                     ))}
                     <td className="px-4 py-2 text-center font-semibold tabular-nums text-stone-900">{r.total || <span className="text-stone-300">–</span>}</td>

@@ -4,8 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useToast } from "@/components/toast/ToastContext";
 import { inputCls } from "@/components/form";
 import { Chip, matchesMember } from "@/components/checkInParts";
-import { MinistryName } from "@/components/MinistryName";
-import { MINISTRY_OPTIONS, ministryList } from "@/lib/constants";
+import { MINISTRY_OPTIONS } from "@/lib/constants";
 import { memberDisplayName } from "@/lib/members";
 import type { EventPerson, EventPersonCheckIn, PersonKind } from "@/lib/event-people-shared";
 import { setEventRegistration } from "../../actions";
@@ -128,7 +127,7 @@ export function RegistrationEditor({
           </Chip>
           {ministriesHere.map((m) => (
             <Chip key={m} active={filter === m} onClick={() => setFilter(m)}>
-              <MinistryName ministry={m} />
+              {m}
             </Chip>
           ))}
           {kindsHere.map((k) => (
@@ -173,7 +172,7 @@ export function RegistrationEditor({
                     )}
                   </p>
                   <p className="text-xs text-stone-500 truncate">
-                    {[p.kind === "stm" ? ministryList(p.ministries) : p.ministries.join(", "), p.kind !== "staff" && p.detail]
+                    {[p.ministries.join(", "), p.kind !== "staff" && p.detail]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>

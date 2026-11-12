@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MinistryName } from "@/components/MinistryName";
 import { formatDateString } from "@/lib/date";
 import { TINT_CLASSES } from "@/lib/event-summary-columns";
 import { GROUP_SHORT_LABELS, NOT_COUNTED_SECTION } from "@/lib/official-count-shared";
@@ -128,7 +127,7 @@ export function OfficialCount({ data }: { data: OfficialCountData }) {
               {s.rows.map((row) => (
                 <tr key={row.label} className="border-t border-stone-100">
                   <td className="px-3 py-2 text-stone-800">
-                    <MinistryName ministry={row.label} />
+                    {row.label}
                   </td>
                   {cells(row, false, s.title !== NOT_COUNTED_SECTION)}
                 </tr>

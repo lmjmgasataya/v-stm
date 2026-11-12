@@ -74,17 +74,3 @@ export async function deleteMember(memberId: number) {
   revalidatePath("/", "layout");
   redirect(withToast("/members", "success", "Service team member deleted."));
 }
-
-/**
- * The members list's Profile checkbox. Admins, within their services. No revalidate: the
- * checkbox keeps its own state, and the list is fresh on the next visit.
- */
-export async function setProfileSubmitted(memberId: number, submitted: boolean): Promise<{ ok: boolean }> {
-  const viewer = await requireMemberManager();
-  const updated = await db
-    .update(members)
-    .set({ profileSubmitted: submitted, updatedAt: new Date() })
-    .where(and(eq(members.id, memberId), memberScope(viewer)))
-    .returning({ id: members.id });
-  return { ok: updated.length > 0 };
-}

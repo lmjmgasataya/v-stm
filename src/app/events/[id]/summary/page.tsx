@@ -8,7 +8,6 @@ import {
   type SummaryColumn,
   type SummaryColumnGroup,
 } from "@/lib/event-summary-columns";
-import { MinistryName } from "@/components/MinistryName";
 import { StatCard } from "@/components/StatCard";
 import { secondaryBtnCls } from "@/components/form";
 
@@ -114,7 +113,7 @@ export default async function EventSummaryPage({ params }: { params: Promise<{ i
                 {section.rows.map((row) => (
                   <tr key={row.label} className="border-t border-stone-100">
                     <td className="px-3 py-2 text-stone-800">
-                      <MinistryName ministry={row.label} />
+                      {row.label}
                     </td>
                     {columns.map((c) => (
                       <td key={c.key} className={`${cellCls(c, row[c.key])} ${divider(c, columns)}`}>

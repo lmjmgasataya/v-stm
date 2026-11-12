@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/toast/ToastContext";
 import { inputCls } from "@/components/form";
-import { MINISTRY_OPTIONS, ministryLabel, ministryList } from "@/lib/constants";
-import { MinistryName } from "@/components/MinistryName";
+import { MINISTRY_OPTIONS } from "@/lib/constants";
 import { Chip, matchesMember } from "@/components/checkInParts";
 import { formatTime } from "@/lib/date";
 import { memberDisplayName } from "@/lib/members";
@@ -217,10 +216,10 @@ export function CheckInWorkspace({
   // Only celebrate when there were members to check in; an empty list just means nobody is assigned
   function emptyNotYetMessage() {
     if (visible.length > 0) {
-      return searching ? "No match among members not yet checked in." : "Everyone here is checked in. 🎉";
+      return searching ? "No match among members not yet checked in." : "Everyone here is checked in.";
     }
     if (searching) return "No member matches your search.";
-    const who = ministry ? `${ministryLabel(ministry)} members` : "members";
+    const who = ministry ? `${ministry} members` : "members";
     return `No ${who} assigned to ${group.name} yet.${scoped ? "" : " Tick “Show members of other services” to check in someone from another service."}`;
   }
 
@@ -339,7 +338,7 @@ export function CheckInWorkspace({
           </Chip>
           {MINISTRY_OPTIONS.map((option) => (
             <Chip key={option} active={ministry === option} onClick={() => setMinistry(option)}>
-              <MinistryName ministry={option} />
+              {option}
             </Chip>
           ))}
           {!scoped && (
@@ -428,7 +427,7 @@ function MemberRow({
   children?: React.ReactNode;
 }) {
   const details = [
-    ministryList(member.ministries),
+    member.ministries.join(", "),
     member.serviceAttending && member.serviceAttending !== group.attending ? `Usually ${member.serviceAttending}` : null,
     member.vglName && `VGL: ${member.vglName}`,
   ].filter(Boolean);

@@ -1,6 +1,5 @@
 import { requireViewer } from "@/lib/access";
 import { BarList, type BarRow } from "@/components/BarList";
-import { MinistryName } from "@/components/MinistryName";
 import { StatCard, percent } from "@/components/StatCard";
 import { NOT_SET, getDemographics, type Count } from "@/lib/reports";
 import { describeActivityRule } from "@/lib/activity-rule";
@@ -56,7 +55,7 @@ export default async function DemographicsPage({ searchParams }: { searchParams:
               <BarList rows={toRows(d.lifestage)} total={d.total} />
             </ChartCard>
             <ChartCard title="Ministry" subtitle="Members serving in several ministries count in each">
-              <BarList rows={toRows(d.ministries, (c) => <MinistryName ministry={c.label} />)} total={d.total} />
+              <BarList rows={toRows(d.ministries)} total={d.total} />
             </ChartCard>
             <ChartCard title="Discipleship journey" subtitle="Members who completed each step">
               <BarList rows={toRows(d.journey)} total={d.total} />

@@ -2,11 +2,9 @@ import Link from "next/link";
 import type { Member } from "@/db/schema";
 import type { ActivityRule } from "@/lib/activity-rule";
 import { formatDateString } from "@/lib/date";
-import { MinistryName } from "@/components/MinistryName";
 import { SortableTh } from "@/components/SortableTh";
 import type { SortDir } from "@/lib/sort";
 import type { MemberSortColumn } from "./sortColumns";
-import { ProfileCheckbox } from "./ProfileCheckbox";
 
 const HEADERS: [MemberSortColumn, string][] = [
   ["lastName", "Last name"],
@@ -88,15 +86,14 @@ export function MembersTable({
                 <div className="flex flex-wrap gap-1">
                   {m.ministries.map((ministry) => (
                     <span key={ministry} className="rounded-full bg-stm-brand/10 px-2 py-0.5 text-xs text-stm-brand whitespace-nowrap">
-                      <MinistryName ministry={ministry} />
+                      {ministry}
                     </span>
                   ))}
                 </div>
               </td>
               <td className="px-4 py-2.5 whitespace-nowrap">
-                {canEdit ? (
-                  <ProfileCheckbox memberId={m.id} name={`${m.firstName} ${m.lastName}`} value={m.profileSubmitted} />
-                ) : m.profileSubmitted ? (
+                {/* Read-only here; admins change it on the member's edit form */}
+                {m.profileSubmitted ? (
                   <span className="text-stm-green font-medium">Submitted</span>
                 ) : (
                   <span className="text-stm-amber font-medium">Not yet</span>

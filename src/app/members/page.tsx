@@ -6,7 +6,7 @@ import { requireViewer } from "@/lib/access";
 import { daysServedSql, lastServedSql } from "@/lib/activity";
 import { describeActivityRule } from "@/lib/activity-rule";
 import { getActivityRule } from "@/lib/settings";
-import { MINISTRY_OPTIONS, ministryLabel } from "@/lib/constants";
+import { MINISTRY_OPTIONS } from "@/lib/constants";
 import { SearchBox } from "@/components/SearchBox";
 import { primaryBtnCls, secondaryBtnCls } from "@/components/form";
 import { FilterSelect } from "./FilterSelect";
@@ -73,7 +73,6 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
           value={p.ministry}
           label="All ministries"
           options={MINISTRY_OPTIONS}
-          optionLabels={Object.fromEntries(MINISTRY_OPTIONS.map((m) => [m, ministryLabel(m)]))}
         />
         {viewer.attending.length > 1 && (
           <ServiceMultiSelect
