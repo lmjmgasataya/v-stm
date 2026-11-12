@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   AttendanceIcon,
   CheckInIcon,
+  DemographicsIcon,
   EventsIcon,
   HomeIcon,
   LeadersIcon,
@@ -34,6 +35,7 @@ const ITEMS: NavItem[] = [
   { href: "/reports", label: "Sunday Reports", Icon: ReportsIcon, group: "Sunday services" },
   { href: "/members", label: "Service Team Members", tabLabel: "Members", Icon: MembersIcon, group: "People" },
   { href: "/leaders", label: "Leaders & Staff", Icon: LeadersIcon, group: "People" },
+  { href: "/demographics", label: "Demographics", Icon: DemographicsIcon, group: "Insights" },
   { href: "/events", label: "All Events", tabLabel: "Events", Icon: EventsIcon, group: "Events" },
   { href: "/event-attendance", label: "Event Attendance", Icon: AttendanceIcon, group: "Events" },
   { href: "/users", label: "Users", Icon: UsersIcon, superAdminOnly: true, group: "Admin" },

@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { asc, count, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { asc, count, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { eventCheckIns, events } from "@/db/schema";
 import { manilaDateString } from "@/lib/date";
@@ -46,6 +46,18 @@ export async function getEventsWithCounts(): Promise<{ upcoming: EventSummary[];
     willAttend: willAttend.get(e.id) ?? 0,
   });
   return { upcoming: upcoming.map(withCount), past: past.map(withCount) };
+}
+
+/** The next `limit` events after `date` (soonest first) with their pre-registered counts — for the dashboard. */
+export async function getEventsAfter(date: string, limit = 5) {
+  const next = await db
+    .select({ id: events.id, name: events.name, eventDate: events.eventDate, preRegistration: events.preRegistration })
+    .from(events)
+    .where(gt(events.eventDate, date))
+    .orderBy(asc(events.eventDate), asc(events.name))
+    .limit(limit);
+  const willAttend = await getWillAttendCounts(next.filter((e) => e.preRegistration).map((e) => e.id));
+  return next.map((e) => ({ ...e, willAttend: willAttend.get(e.id) ?? 0 }));
 }
 
 /** Events on one date with their check-in counts (and pre-registered count) — for the dashboard. */

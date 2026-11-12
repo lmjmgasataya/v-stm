@@ -24,10 +24,13 @@ export default async function DemographicsPage({ searchParams }: { searchParams:
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-sm text-stone-500 -mt-2">
-        Active service team members · {scopeName}
-        {rule.enabled && <span className="text-stone-400"> · {describeActivityRule(rule)}</span>}
-      </p>
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Demographics</h1>
+        <p className="text-sm text-stone-500">
+          Active service team members · {scopeName}
+          {rule.enabled && <span className="text-stone-400"> · {describeActivityRule(rule)}</span>}
+        </p>
+      </div>
 
       {/* Filters: one row, above everything they affect */}
       {groups.length > 0 && (
@@ -37,7 +40,7 @@ export default async function DemographicsPage({ searchParams }: { searchParams:
             return (
               <Link
                 key={g ?? "all"}
-                href={g ? `/reports/demographics?group=${encodeURIComponent(g)}` : "/reports/demographics"}
+                href={g ? `/demographics?group=${encodeURIComponent(g)}` : "/demographics"}
                 replace
                 scroll={false}
                 aria-current={active || undefined}

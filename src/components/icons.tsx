@@ -63,6 +63,15 @@ export const ReportsIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const DemographicsIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 20h16" />
+    <path d="M7 16v-5" />
+    <path d="M12 16V5" />
+    <path d="M17 16v-8" />
+  </Svg>
+);
+
 export const UsersIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.3 7.5 9.5 4.4-1.2 7.5-4.9 7.5-9.5V6z" />

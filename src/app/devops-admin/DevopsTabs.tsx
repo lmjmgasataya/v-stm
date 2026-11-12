@@ -8,7 +8,7 @@ const TABS = [
   { href: "/devops-admin/data", label: "Data" },
 ];
 
-/** DevOps sub-menu: underline tabs, same as ReportTabs. */
+/** DevOps sub-menu: underline tabs. */
 export function DevopsTabs() {
   const pathname = usePathname();
   return (

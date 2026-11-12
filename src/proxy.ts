@@ -28,5 +28,5 @@ export default async function proxy(request: NextRequest) {
 
 // `/login` is intentionally excluded.
 export const config = {
-  matcher: ["/", "/members/:path*", "/check-in/:path*", "/attendance/:path*", "/users/:path*", "/events/:path*", "/event-attendance/:path*", "/leaders/:path*", "/reports/:path*", "/settings/:path*", "/devops-admin/:path*"],
+  matcher: ["/", "/members/:path*", "/check-in/:path*", "/attendance/:path*", "/users/:path*", "/events/:path*", "/event-attendance/:path*", "/leaders/:path*", "/reports/:path*", "/demographics/:path*", "/settings/:path*", "/devops-admin/:path*"],
 };

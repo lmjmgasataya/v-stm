@@ -6,7 +6,7 @@ import { memberScope, requireViewer } from "@/lib/access";
 import { activeMemberCondition } from "@/lib/activity";
 import { getActivityRule } from "@/lib/settings";
 import { getAttendanceByService } from "@/lib/attendance";
-import { getEventsOn } from "@/lib/events";
+import { getEventsAfter, getEventsOn } from "@/lib/events";
 import { formatDateString, manilaDateString } from "@/lib/date";
 import { MinistryName } from "@/components/MinistryName";
 import { StatCard } from "@/components/StatCard";
@@ -18,7 +18,7 @@ export default async function DashboardPage() {
   const activeInScope = and(activeMemberCondition(await getActivityRule()), memberScope(viewer));
 
   const today = manilaDateString();
-  const [[{ active }], byMinistry, todayByService] = await Promise.all([
+  const [[{ active }], byMinistry, todayByService, upcomingEvents] = await Promise.all([
     db.select({ active: count() }).from(members).where(activeInScope),
     db
       .select({ ministry: sql<string>`unnest(${members.ministries})`.as("ministry"), total: count() })
@@ -27,6 +27,7 @@ export default async function DashboardPage() {
       .groupBy(sql`1`)
       .orderBy(sql`1`),
     getAttendanceByService(today, viewer.services),
+    getEventsAfter(today),
   ]);
   const todaysEvents = await getEventsOn(today);
   const checkedInToday = todayByService.reduce((sum, s) => sum + s.rows.length, 0);
@@ -108,6 +109,44 @@ export default async function DashboardPage() {
         </section>
       )}
 
+      {upcomingEvents.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-baseline justify-between gap-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">Upcoming events</h2>
+            <Link href="/events" className="text-sm font-semibold text-stm-brand hover:underline">
+              All events →
+            </Link>
+          </div>
+          <ul className="divide-y divide-stone-100 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-sm">
+            {upcomingEvents.map((event) => {
+              const [month, day] = shortParts(event.eventDate);
+              return (
+                <li key={event.id}>
+                  <Link href={`/events/${event.id}`} className="group flex items-center gap-4 px-4 py-3 transition hover:bg-stone-50">
+                    <span className="flex w-12 shrink-0 flex-col items-center rounded-xl bg-stm-brand/10 py-1.5 text-stm-brand">
+                      <span className="text-[11px] font-semibold uppercase">{month}</span>
+                      <span className="text-lg font-extrabold leading-none">{day}</span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-stone-900 group-hover:text-stm-brand">{event.name}</span>
+                      <span className="block text-xs text-stone-500">
+                        {weekday(event.eventDate)} · {daysUntil(today, event.eventDate)}
+                      </span>
+                    </span>
+                    {event.preRegistration && (
+                      <span className="shrink-0 text-right text-sm">
+                        <span className="block font-bold tabular-nums text-stm-brand">{event.willAttend}</span>
+                        <span className="block text-xs text-stone-500">pre-registered</span>
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-3">Active members by ministry</h2>
         {byMinistry.length === 0 ? (
@@ -131,4 +170,20 @@ export default async function DashboardPage() {
       </section>
     </div>
   );
+}
+
+const dateOf = (value: string) => new Date(`${value}T00:00:00Z`);
+
+/** "2026-11-15" → ["Nov", "15"] */
+function shortParts(value: string) {
+  const d = dateOf(value);
+  return [d.toLocaleDateString("en-PH", { timeZone: "UTC", month: "short" }), String(d.getUTCDate())];
+}
+
+const weekday = (value: string) => dateOf(value).toLocaleDateString("en-PH", { timeZone: "UTC", weekday: "long" });
+
+/** Calendar days between two Manila dates: "Tomorrow", "In 5 days" */
+function daysUntil(today: string, value: string) {
+  const days = Math.round((dateOf(value).getTime() - dateOf(today).getTime()) / 86_400_000);
+  return days === 1 ? "Tomorrow" : `In ${days} days`;
 }

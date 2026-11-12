@@ -6,6 +6,7 @@ import { NO_MINISTRY, getMinistryServiceTable, getServiceDates } from "@/lib/rep
 import { MinistryName } from "@/components/MinistryName";
 import { secondaryBtnCls } from "@/components/form";
 import { DateSelect } from "./DateSelect";
+import { SundayTrend } from "./SundayTrend";
 
 /** "9AM - Mandurriao" → ["9AM", "Mandurriao"] */
 const splitService = (s: string) => [s.split(" - ")[0], s.split(" - ")[1] ?? ""] as const;
@@ -59,6 +60,8 @@ export default async function MinistryServiceReportPage({ searchParams }: { sear
           </a>
         </div>
       </div>
+
+      <SundayTrend dates={dates.filter((d) => d.date <= today)} selected={date} />
 
       <section className="bg-white rounded-2xl border border-stone-200/80 shadow-sm">
         <div className="px-5 pt-5 pb-3">
