@@ -30,6 +30,8 @@ export interface AttendanceRow {
   checkedInBy: string | null;
   /** Event check-ins on pre-registration events only */
   isWalkIn: boolean;
+  /** Sunday check-ins: the service (SERVICE_OPTIONS value) */
+  service?: string;
 }
 
 /** One day's check-ins grouped by service, in `services` order (every service listed, even empty). */
@@ -57,7 +59,7 @@ export async function getAttendanceByService(
 
   const byService = new Map<string, AttendanceRow[]>(services.map((s) => [s, []]));
   for (const { service, memberId, ...row } of rows) {
-    byService.get(service)?.push({ ...row, key: `stm-${memberId}`, kind: "stm", isWalkIn: false });
+    byService.get(service)?.push({ ...row, key: `stm-${memberId}`, kind: "stm", isWalkIn: false, service });
   }
   return Array.from(byService, ([service, serviceRows]) => ({ service, rows: serviceRows }));
 }

@@ -1,27 +1,18 @@
 import { requireViewer } from "@/lib/access";
-import { getAttendanceByService, getCheckInCountsByDate, getRecentServiceDates, type AttendanceRow } from "@/lib/attendance";
+import { getAttendanceByService, getCheckInCountsByDate, getRecentServiceDates } from "@/lib/attendance";
+import { SUNDAY_SORTS, filterLabel, matchesFilter, parseAttendanceSort, prepareRows } from "@/lib/attendance-table";
 import { MINISTRY_OPTIONS } from "@/lib/constants";
 import { addMonths, formatDateString, isDateString, isMonthString, manilaDateString } from "@/lib/date";
-import { parseSort } from "@/lib/sort";
 import { StatCard } from "@/components/StatCard";
+import { secondaryBtnCls } from "@/components/form";
 import { AttendanceCalendar } from "./AttendanceCalendar";
-import {
-  AttendanceCard,
-  COMPARE,
-  FilterChips,
-  RecentDates,
-  SORT_KEYS,
-  SortChips,
-  attendanceHref,
-  filterLabel,
-  matchesFilter,
-} from "./AttendanceParts";
+import { AttendanceTable, FilterChips, RecentDates, ServiceCards, attendanceHref, type AttendanceParams } from "./AttendanceParts";
 
 /** Sunday service check-ins only — events have their own page (/event-attendance). */
 export default async function AttendancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; month?: string; ministry?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ date?: string; month?: string; ministry?: string; service?: string; sort?: string; dir?: string }>;
 }) {
   const viewer = await requireViewer();
 
@@ -32,10 +23,11 @@ export default async function AttendancePage({
   const month = isMonthString(sp.month) ? sp.month : date.slice(0, 7);
   const lastOfMonth = new Date(`${addMonths(month, 1)}-01T00:00:00Z`).getTime() - 24 * 60 * 60 * 1000;
   const ministry = (MINISTRY_OPTIONS as readonly string[]).includes(sp.ministry ?? "") ? sp.ministry! : "";
-  const { sort, dir } = parseSort(sp.sort, sp.dir, SORT_KEYS, "last");
+  const service = viewer.services.includes(sp.service ?? "") ? sp.service! : "";
+  const { sort, dir } = parseAttendanceSort(sp.sort, sp.dir, SUNDAY_SORTS);
 
-  const current = { date, ministry, sort, dir };
-  const href = (next: Parameters<typeof attendanceHref>[2]) => attendanceHref("/attendance", current, next);
+  const current: AttendanceParams = { date, ministry, service, sort, dir };
+  const href = (next: Partial<AttendanceParams> & { month?: string }) => attendanceHref("/attendance", current, next);
   const keep = href({}).replace(/^\/attendance\?date=[^&]*/, ""); // "&ministry=…&sort=…" for the calendar
 
   const [services, recentDates, calendarCounts] = await Promise.all([
@@ -45,21 +37,19 @@ export default async function AttendancePage({
   ]);
 
   const all = services.flatMap((s) => s.rows);
-  // A member serving in several ministries counts once in each (always over the whole day, so
-  // every chip shows its own count even while another ministry is selected)
+  // Ministry chips count people over the whole day (every chip keeps its own count while another is selected)
   const ministryCounts = MINISTRY_OPTIONS.map((m) => ({
     value: m,
     label: m,
     count: new Set(all.filter((r) => matchesFilter(r, m)).map((r) => r.key)).size,
   }));
   const allMembers = new Set(all.map((r) => r.key)).size;
+  // Service cards follow the ministry filter
+  const serviceCounts = services.map((s) => ({ service: s.service, count: s.rows.filter((r) => matchesFilter(r, ministry)).length }));
 
-  const sign = dir === "asc" ? 1 : -1;
-  const prepare = (rows: AttendanceRow[]) => rows.filter((r) => matchesFilter(r, ministry)).sort((a, b) => sign * COMPARE[sort](a, b));
-  const serviceCards = services.map(({ service, rows }) => ({ service, rows: prepare(rows) }));
-  const shownAll = serviceCards.flatMap((s) => s.rows);
-  const uniqueMembers = new Set(shownAll.map((r) => r.key)).size;
-  const filterNote = ministry ? `${filterLabel(ministry)} only` : undefined;
+  const rows = prepareRows(service ? all.filter((r) => r.service === service) : all, ministry, sort, dir);
+  const uniqueMembers = new Set(rows.map((r) => r.key)).size;
+  const filterNote = [ministry && filterLabel(ministry), service].filter(Boolean).join(" · ") || undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -80,20 +70,30 @@ export default async function AttendancePage({
           <RecentDates dates={recentDates} selected={date} href={(d) => href({ date: d })} />
 
           <div className="grid gap-4 grid-cols-2">
-            <StatCard label="Check-ins" value={shownAll.length} hint={filterNote} />
+            <StatCard label="Check-ins" value={rows.length} hint={filterNote} />
             <StatCard label="Members served" value={uniqueMembers} hint={filterNote ?? "Counted once across services"} />
           </div>
 
           <FilterChips allCount={allMembers} items={ministryCounts} selected={ministry} href={(m) => href({ ministry: m })} />
+          <ServiceCards services={serviceCounts} selected={service} href={(s) => href({ service: s })} />
         </div>
       </div>
 
-      <SortChips sort={sort} dir={dir} href={(s, d) => href({ sort: s, dir: d })} />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        {serviceCards.map((card) => (
-          <AttendanceCard key={card.service} title={card.service} rows={card.rows} filter={ministry} sort={sort} />
-        ))}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">
+            Check-ins{filterNote && <span className="normal-case tracking-normal font-normal"> · {filterNote}</span>}
+          </h2>
+          <a
+            href={attendanceHref("/attendance/export", current)}
+            download
+            aria-disabled={rows.length === 0}
+            className={`${secondaryBtnCls} ${rows.length === 0 ? "pointer-events-none opacity-50" : ""}`}
+          >
+            Download Excel
+          </a>
+        </div>
+        <AttendanceTable rows={rows} filter={ministry} sort={sort} dir={dir} columns={SUNDAY_SORTS} />
       </div>
     </div>
   );

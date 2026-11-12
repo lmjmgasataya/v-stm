@@ -7,31 +7,22 @@ import {
   getRecentEventDates,
   isKindFilter,
   KIND_FILTERS,
-  type AttendanceRow,
   type KindFilter,
 } from "@/lib/attendance";
+import { EVENT_SORTS, filterLabel, matchesFilter, parseAttendanceSort, prepareRows } from "@/lib/attendance-table";
 import { MINISTRY_OPTIONS } from "@/lib/constants";
 import { addMonths, formatDateString, isDateString, isMonthString, manilaDateString } from "@/lib/date";
-import { parseSort } from "@/lib/sort";
 import { StatCard } from "@/components/StatCard";
+import { secondaryBtnCls } from "@/components/form";
 import { AttendanceCalendar } from "@/app/attendance/AttendanceCalendar";
-import {
-  AttendanceCard,
-  COMPARE,
-  FilterChips,
-  RecentDates,
-  SORT_KEYS,
-  SortChips,
-  attendanceHref,
-  filterLabel,
-  matchesFilter,
-} from "@/app/attendance/AttendanceParts";
+import { AttendanceTable, FilterChips, RecentDates, attendanceHref, type AttendanceParams } from "@/app/attendance/AttendanceParts";
 
 const BASE = "/event-attendance";
 
 /**
- * Who came to the events on a date — STMs, leaders and pastors & staff, with walk-ins.
- * Church-wide: not limited by the viewer's service group (like the events themselves).
+ * Who came to the events on a date — STMs, leaders and pastors & staff, with walk-ins. One
+ * full-width table per event (usually just one a day), stacked. Church-wide: not limited by the
+ * viewer's service group (like the events themselves).
  */
 export default async function EventAttendancePage({
   searchParams,
@@ -48,10 +39,10 @@ export default async function EventAttendancePage({
   const lastOfMonth = new Date(`${addMonths(month, 1)}-01T00:00:00Z`).getTime() - 24 * 60 * 60 * 1000;
   // A ministry (STMs), or "leaders" / "staff"
   const filter = (MINISTRY_OPTIONS as readonly string[]).includes(sp.ministry ?? "") || isKindFilter(sp.ministry) ? sp.ministry! : "";
-  const { sort, dir } = parseSort(sp.sort, sp.dir, SORT_KEYS, "last");
+  const { sort, dir } = parseAttendanceSort(sp.sort, sp.dir, EVENT_SORTS);
 
-  const current = { date, ministry: filter, sort, dir };
-  const href = (next: Parameters<typeof attendanceHref>[2]) => attendanceHref(BASE, current, next);
+  const current: AttendanceParams = { date, ministry: filter, sort, dir };
+  const href = (next: Partial<AttendanceParams> & { month?: string }) => attendanceHref(BASE, current, next);
   const keep = href({}).replace(/^\/event-attendance\?date=[^&]*/, "");
 
   const [dayEvents, recentDates, calendarCounts] = await Promise.all([
@@ -67,14 +58,14 @@ export default async function EventAttendancePage({
     ...(Object.keys(KIND_FILTERS) as KindFilter[]).map((k) => ({ value: k as string, label: KIND_FILTERS[k], count: countOf(k) })),
   ];
 
-  const sign = dir === "asc" ? 1 : -1;
-  const prepare = (rows: AttendanceRow[]) => rows.filter((r) => matchesFilter(r, filter)).sort((a, b) => sign * COMPARE[sort](a, b));
-  const cards = dayEvents.map(({ event, rows }) => ({ event, rows: prepare(rows) }));
-  const shown = cards.flatMap((c) => c.rows);
+  const tables = dayEvents.map(({ event, rows }) => ({ event, rows: prepareRows(rows, filter, sort, dir) }));
+  const shown = tables.flatMap((t) => t.rows);
   const people = new Set(shown.map((r) => r.key)).size;
   const walkIns = shown.filter((r) => r.isWalkIn).length;
   const showWalkIns = dayEvents.some((e) => e.event.preRegistration);
   const filterNote = filter ? `${filterLabel(filter)} only` : undefined;
+  // One event (the usual case): the table needs no title bar, the stats above already say it all
+  const single = tables.length === 1;
 
   return (
     <div className="flex flex-col gap-6">
@@ -111,14 +102,40 @@ export default async function EventAttendancePage({
           </Link>
         </div>
       ) : (
-        <>
-          <SortChips sort={sort} dir={dir} href={(s, d) => href({ sort: s, dir: d })} />
-          <div className="grid gap-4 lg:grid-cols-2">
-            {cards.map(({ event, rows }) => (
-              <AttendanceCard key={event.id} title={event.name} href={`/events/${event.id}`} rows={rows} filter={filter} sort={sort} />
-            ))}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="min-w-0 text-sm font-semibold uppercase tracking-wide text-stone-500">
+              {single ? (
+                <Link href={`/events/${tables[0].event.id}`} className="normal-case tracking-normal text-base font-bold text-stone-900 hover:text-stm-brand hover:underline">
+                  {tables[0].event.name}
+                </Link>
+              ) : (
+                "Check-ins"
+              )}
+              {filterNote && <span className="normal-case tracking-normal font-normal"> · {filterNote}</span>}
+            </h2>
+            <a
+              href={attendanceHref(`${BASE}/export`, current)}
+              download
+              aria-disabled={shown.length === 0}
+              className={`${secondaryBtnCls} ${shown.length === 0 ? "pointer-events-none opacity-50" : ""}`}
+            >
+              Download Excel
+            </a>
           </div>
-        </>
+          {tables.map(({ event, rows }) => (
+            <AttendanceTable
+              key={event.id}
+              title={single ? undefined : event.name}
+              href={single ? undefined : `/events/${event.id}`}
+              rows={rows}
+              filter={filter}
+              sort={sort}
+              dir={dir}
+              columns={EVENT_SORTS}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
