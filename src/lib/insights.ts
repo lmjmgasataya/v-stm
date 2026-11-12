@@ -198,8 +198,11 @@ export interface MinistryHealthRow {
   average: number;
   /** STMs who served on the latest lookback date. */
   latest: number;
-  /** Rostered members who served on any of the latest RECENT dates. */
-  servedRecently: number;
+  /** Fewest and most STMs serving on one lookback date. */
+  low: number;
+  high: number;
+  /** Different people who served on any lookback date (the rotation size). */
+  people: number;
 }
 
 export interface MinistryHealth {
@@ -221,18 +224,20 @@ export async function getMinistryHealth(viewer: Viewer, scope: InsightsScope, ru
     dates,
     scope.services
   );
-  const recent = new Set(dates.slice(0, RECENT));
 
   const summarize = (ministry: string, group: { id: number }[]): MinistryHealthRow => {
     const sets = group.map((m) => served.get(m.id) ?? new Set<string>());
-    const serves = sets.reduce((sum, s) => sum + s.size, 0);
+    // STMs serving on each lookback date, newest first
+    const perDate = dates.map((d) => sets.filter((s) => s.has(d)).length);
     return {
       ministry,
       roster: group.length,
       active: group.filter((m) => active.has(m.id)).length,
-      average: dates.length ? Math.round((serves / dates.length) * 10) / 10 : 0,
-      latest: dates.length ? sets.filter((s) => s.has(dates[0])).length : 0,
-      servedRecently: sets.filter((s) => [...s].some((d) => recent.has(d))).length,
+      average: perDate.length ? Math.round((perDate.reduce((a, b) => a + b, 0) / perDate.length) * 10) / 10 : 0,
+      latest: perDate[0] ?? 0,
+      low: perDate.length ? Math.min(...perDate) : 0,
+      high: perDate.length ? Math.max(...perDate) : 0,
+      people: sets.filter((s) => s.size > 0).length,
     };
   };
 

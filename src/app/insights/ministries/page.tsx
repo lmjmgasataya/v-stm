@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireViewer } from "@/lib/access";
 import { describeActivityRule } from "@/lib/activity-rule";
 import { formatShortDate } from "@/lib/date";
-import { RECENT, getMinistryHealth, insightsScope, type MinistryHealthRow } from "@/lib/insights";
+import { getMinistryHealth, insightsScope, type MinistryHealthRow } from "@/lib/insights";
 import { NO_MINISTRY } from "@/lib/reports";
 import { getActivityRule } from "@/lib/settings";
 import { MinistryName } from "@/components/MinistryName";
@@ -14,7 +14,8 @@ export default async function MinistryHealthPage({ searchParams }: { searchParam
   const rule = await getActivityRule();
   const h = await getMinistryHealth(viewer, scope, rule);
   const n = h.dates.length;
-  const recent = Math.min(RECENT, n);
+  // Bars compare ministries, so they share one scale (the busiest ministry's average)
+  const maxAverage = Math.max(1, ...h.rows.map((r) => r.average));
   const th = "px-3 py-2.5 font-semibold";
 
   return (
@@ -40,7 +41,7 @@ export default async function MinistryHealthPage({ searchParams }: { searchParam
           <div className="px-5 pt-5 pb-3">
             <h2 className="font-bold text-stone-900">Ministry health</h2>
             <p className="text-xs text-stone-500">
-              How many each ministry has, how many serve on a typical Sunday, and how much of the team served lately.
+              How many each ministry has and how many of them check in on a typical Sunday.
               {rule.enabled && ` Active = ${describeActivityRule(rule).toLowerCase()}.`}
             </p>
             {n === 0 && (
@@ -56,25 +57,31 @@ export default async function MinistryHealthPage({ searchParams }: { searchParam
                   <th scope="col" className={`${th} pl-5 text-left uppercase tracking-wide`}>Ministry</th>
                   <th scope="col" className={`${th} text-right`}>On roster</th>
                   {rule.enabled && <th scope="col" className={`${th} text-right`}>Active</th>}
-                  <th scope="col" className={`${th} text-right`} title={`Average STMs serving per Sunday, over the last ${n}`}>
-                    Avg per Sunday
+                  <th scope="col" className={`${th} text-left`} title={`Average STMs checked in per Sunday, over the last ${n}`}>
+                    Avg checked in per Sunday
                   </th>
                   <th scope="col" className={`${th} text-right`}>{n ? formatShortDate(h.dates[0]) : "Latest"}</th>
-                  <th scope="col" className={`${th} pr-5 text-left`}>Served in the last {recent || RECENT}</th>
+                  <th scope="col" className={`${th} text-right`} title="Fewest and most checked in on one Sunday">
+                    Low – high
+                  </th>
+                  <th scope="col" className={`${th} pr-5 text-right`} title={`Different people who checked in at least once in the last ${n}`}>
+                    Different people
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {h.rows.map((r) => (
-                  <Row key={r.ministry} row={r} showActive={rule.enabled} />
+                  <Row key={r.ministry} row={r} showActive={rule.enabled} maxAverage={maxAverage} />
                 ))}
               </tbody>
               <tfoot>
-                <Row row={h.total} showActive={rule.enabled} total />
+                <Row row={h.total} showActive={rule.enabled} maxAverage={maxAverage} total />
               </tfoot>
             </table>
           </div>
           <p className="px-5 py-3 text-xs text-stone-400">
-            Each STM counts in their ministry. The {n ? formatShortDate(h.dates[0]) : "latest"} column is the latest Sunday with check-ins.
+            Each STM counts in their ministry. The {n ? formatShortDate(h.dates[0]) : "latest"} column is the latest Sunday with
+            check-ins; different people = everyone who checked in at least once in the last {n || 8} Sundays.
           </p>
         </section>
       )}
@@ -82,8 +89,7 @@ export default async function MinistryHealthPage({ searchParams }: { searchParam
   );
 }
 
-function Row({ row, showActive, total = false }: { row: MinistryHealthRow; showActive: boolean; total?: boolean }) {
-  const pct = row.roster ? Math.round((row.servedRecently / row.roster) * 100) : 0;
+function Row({ row, showActive, maxAverage, total = false }: { row: MinistryHealthRow; showActive: boolean; maxAverage: number; total?: boolean }) {
   const cell = `px-3 py-2.5 text-right tabular-nums ${total ? "font-bold text-stone-900" : "text-stone-700"}`;
   const name =
     row.ministry === NO_MINISTRY ? (
@@ -102,23 +108,23 @@ function Row({ row, showActive, total = false }: { row: MinistryHealthRow; showA
       </th>
       <td className={cell}>{row.roster}</td>
       {showActive && <td className={cell}>{row.active}</td>}
-      <td className={cell}>{row.average}</td>
-      <td className={cell}>{row.latest}</td>
-      <td className="py-2.5 pl-3 pr-5">
-        <div
-          className="flex items-center gap-3"
-          title={`${row.servedRecently} of ${row.roster} served in the last few Sundays`}
-          aria-label={`${row.servedRecently} of ${row.roster}, ${pct}%`}
-        >
-          {/* Meter: one teal, light track; the number carries the value */}
-          <span className="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-stone-100" aria-hidden="true">
-            <span className="block h-full rounded-full bg-stm-brand" style={{ width: `${pct}%` }} />
+      <td className="px-3 py-2.5">
+        <div className="flex items-center gap-3">
+          {/* One teal bar per ministry on a shared scale; the total row is a sum, so it gets no bar */}
+          <span className="h-2 w-28 shrink-0" aria-hidden="true">
+            {!total && (
+              <span
+                className="block h-full rounded-r-[4px] bg-stm-brand"
+                style={{ width: row.average ? `max(2px, ${(row.average / maxAverage) * 100}%)` : 0 }}
+              />
+            )}
           </span>
-          <span className={`tabular-nums whitespace-nowrap ${total ? "font-bold text-stone-900" : "text-stone-700"}`}>
-            {pct}% <span className="font-normal text-stone-400">· {row.servedRecently}</span>
-          </span>
+          <span className={`tabular-nums ${total ? "font-bold text-stone-900" : "font-semibold text-stone-900"}`}>{row.average}</span>
         </div>
       </td>
+      <td className={cell}>{row.latest}</td>
+      <td className={`${cell} whitespace-nowrap`}>{row.low === row.high ? row.low : `${row.low} – ${row.high}`}</td>
+      <td className={`${cell} pr-5`}>{row.people}</td>
     </tr>
   );
 }
