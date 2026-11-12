@@ -57,6 +57,13 @@
       "when": 1794396463815,
       "tag": "0007_profile_submitted_not_null",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794481382811,
+      "tag": "0008_usher_to_ushering",
+      "breakpoints": true
     }
   ]
 }

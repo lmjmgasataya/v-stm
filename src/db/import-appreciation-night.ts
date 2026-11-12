@@ -48,7 +48,7 @@ const MINISTRIES: Record<string, Ministry> = {
   PRODUCTION: "Production",
   PROD: "Production",
   TECH: "Tech",
-  USHERING: "Usher",
+  USHERING: "Ushering",
 };
 
 // Corrections to the masterlist (confirmed with the team), keyed "last|first" in lowercase

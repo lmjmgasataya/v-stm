@@ -286,7 +286,7 @@ export function parseEmail(raw: string): Parsed<string | null> {
 
 /**
  * Splits a multi-value cell ("Music; Tech", "Music, Tech", one per line) and matches each
- * part to `options` loosely — "Music Team" → Music, "Ushering" → Usher. Returns the matches
+ * part to `options` loosely — "Music Team" → Music, "Ushers" → Ushering. Returns the matches
  * in the options' own order, plus the parts that didn't match anything.
  */
 function parseList(
@@ -312,8 +312,9 @@ export function parseMinistries(raw: string) {
   return parseList(raw, MINISTRY_OPTIONS, {
     worship: "Music",
     musicteam: "Music",
-    ushering: "Usher",
-    ushers: "Usher",
+    // "Usher" was this ministry's old name, so older exports still import
+    usher: "Ushering",
+    ushers: "Ushering",
     intercession: "Prayer",
     comms: "Communication",
     communications: "Communication",

@@ -76,7 +76,7 @@ export const MINISTRY_OPTIONS = [
   "Music",
   "Tech",
   "Admin",
-  "Usher",
+  "Ushering",
   "Prayer",
   "Production",
   "Communication",
