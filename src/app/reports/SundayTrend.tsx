@@ -1,12 +1,8 @@
 import Link from "next/link";
-import { formatDateString } from "@/lib/date";
+import { formatDateString, formatShortDate as shortDate } from "@/lib/date";
 
 /** How many service dates the trend shows. */
 const WINDOW = 10;
-
-/** "2026-11-08" → "Nov 8" */
-const shortDate = (value: string) =>
-  new Date(`${value}T00:00:00Z`).toLocaleDateString("en-PH", { timeZone: "UTC", month: "short", day: "numeric" });
 
 /**
  * STMs who served (distinct people) over the last service dates, oldest → newest. One series,

@@ -60,3 +60,8 @@ export function addMonths(month: string, delta: number): string {
   const [y, m] = month.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 7);
 }
+
+/** "2026-11-08" → "Nov 8" */
+export function formatShortDate(value: string): string {
+  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-PH", { timeZone: "UTC", month: "short", day: "numeric" });
+}

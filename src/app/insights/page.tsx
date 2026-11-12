@@ -1,61 +1,32 @@
-import Link from "next/link";
 import { requireViewer } from "@/lib/access";
-import { SERVICE_ATTENDING_BY_GROUP, SERVICE_GROUP_NAMES, isServiceGroup } from "@/lib/constants";
 import { BarList, type BarRow } from "@/components/BarList";
 import { MinistryName } from "@/components/MinistryName";
 import { StatCard, percent } from "@/components/StatCard";
 import { NOT_SET, getDemographics, type Count } from "@/lib/reports";
 import { describeActivityRule } from "@/lib/activity-rule";
+import { insightsScope } from "@/lib/insights";
 import { getActivityRule } from "@/lib/settings";
+import { GroupFilter } from "./GroupFilter";
 
 export default async function DemographicsPage({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
   const viewer = await requireViewer();
-  const { group: groupParam } = await searchParams;
-  // Filter by service group. A group user only has their own group, so they get no filter.
-  const groups = viewer.serviceGroup ? [] : SERVICE_GROUP_NAMES;
-  const group = isServiceGroup(groupParam) && groups.includes(groupParam) ? groupParam : null;
-  const attending = group ? [SERVICE_ATTENDING_BY_GROUP[group]] : viewer.attending;
+  const scope = insightsScope(viewer, (await searchParams).group);
+  const { group, attending } = scope;
   const rule = await getActivityRule();
   const d = await getDemographics(viewer, group ? attending : null, rule);
 
   const toRows = (counts: Count[], label?: (c: Count) => React.ReactNode): BarRow[] =>
     counts.map((c) => ({ label: label ? label(c) : c.label, text: c.label, value: c.value, muted: c.label === NOT_SET }));
-  const scopeName = group ?? viewer.serviceGroup ?? "All services";
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Demographics</h1>
-        <p className="text-sm text-stone-500">
-          Active service team members · {scopeName}
-          {rule.enabled && <span className="text-stone-400"> · {describeActivityRule(rule)}</span>}
-        </p>
-      </div>
+      <p className="text-sm text-stone-500 -mt-2">
+        Active service team members · {scope.name}
+        {rule.enabled && <span className="text-stone-400"> · {describeActivityRule(rule)}</span>}
+      </p>
 
       {/* Filters: one row, above everything they affect */}
-      {groups.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Service group">
-          {[null, ...groups].map((g) => {
-            const active = g === group;
-            return (
-              <Link
-                key={g ?? "all"}
-                href={g ? `/demographics?group=${encodeURIComponent(g)}` : "/demographics"}
-                replace
-                scroll={false}
-                aria-current={active || undefined}
-                className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
-                  active
-                    ? "bg-stm-brand text-white shadow-sm"
-                    : "bg-white text-stone-600 ring-1 ring-stone-200 hover:ring-stm-brand/40 hover:text-stm-brand"
-                }`}
-              >
-                {g ?? "All"}
-              </Link>
-            );
-          })}
-        </div>
-      )}
+      <GroupFilter basePath="/insights" groups={scope.groups} group={group} />
 
       {d.total === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-12 text-center text-sm text-stone-500">
