@@ -60,6 +60,7 @@ export function CheckInWorkspace({
   initialGroup,
   scoped,
   needsApproval,
+  notSunday,
   todayLabel,
   attendingOptions,
   roster: serverRoster,
@@ -72,6 +73,8 @@ export function CheckInWorkspace({
   scoped: boolean;
   /** Signed in as a volunteer: STMs they add wait for an admin's approval. */
   needsApproval: boolean;
+  /** Today isn't a Sunday: confirm before checking anyone in. */
+  notSunday: boolean;
   todayLabel: string;
   /** Service-attending values this user may give a new STM (Viewer.attending). */
   attendingOptions: readonly string[];
@@ -98,6 +101,8 @@ export function CheckInWorkspace({
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
   const [adding, setAdding] = useState(false);
+  // Asked once per visit (the periodic refresh keeps this state)
+  const [confirmDay, setConfirmDay] = useState(notSunday);
   // STMs added here (AddMemberModal), until the next server render includes them
   const [added, setAdded] = useState<RosterMember[]>([]);
   const roster = useMemo(
@@ -446,6 +451,44 @@ export function CheckInWorkspace({
             )}
           </section>
         </>
+      )}
+
+      {confirmDay && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="not-sunday-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stm-brand-dark/95 px-6"
+        >
+          <div className="w-full max-w-md text-center text-white">
+            <h2 id="not-sunday-title" className="text-3xl font-extrabold tracking-tight">
+              Today isn&apos;t Sunday
+            </h2>
+            <p className="mt-3 text-white/80">
+              It&apos;s {todayLabel}. Sunday check-in is for the Sunday services — check-ins you make now are recorded for today.
+            </p>
+            <p className="mt-1 text-white/80">Do you want to proceed?</p>
+            <div className="mt-8 flex flex-col-reverse justify-center gap-3 sm:flex-row">
+              <Link
+                href="/"
+                className="rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                No, go back
+              </Link>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => {
+                  setConfirmDay(false);
+                  searchRef.current?.focus();
+                }}
+                className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-stm-brand-dark transition hover:bg-white/90"
+              >
+                Yes, proceed
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {adding && (

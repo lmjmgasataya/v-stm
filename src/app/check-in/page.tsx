@@ -53,6 +53,8 @@ export default async function CheckInPage({
       initialGroup={initialGroup}
       scoped={!!viewer.serviceGroup}
       todayLabel={formatDateString(today)}
+      // Services are on Sundays (Manila date): any other day asks before showing the check-in
+      notSunday={new Date(`${today}T00:00:00Z`).getUTCDay() !== 0}
       needsApproval={!viewer.canManageMembers}
       attendingOptions={viewer.attending}
       roster={roster.map(({ status, ...m }) => ({ ...m, pending: status === "pending" })) satisfies RosterMember[]}
