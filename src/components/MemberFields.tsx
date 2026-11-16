@@ -1,9 +1,9 @@
 "use client";
 
 import type { Member } from "@/db/schema";
-import { Field, Select } from "@/components/form";
+import { Field, Select, inputCls } from "@/components/form";
 import { VglAutocomplete } from "@/components/VglAutocomplete";
-import { DISCIPLESHIP_JOURNEY_STEPS, GENDER_OPTIONS, LIFESTAGE_OPTIONS, MINISTRY_OPTIONS, MOBILE_NUMBER_HELP, MOBILE_NUMBER_PATTERN } from "@/lib/constants";
+import { DISCIPLESHIP_JOURNEY_STEPS, GENDER_OPTIONS, LIFESTAGE_OPTIONS, MEMBER_STATUSES, MEMBER_STATUS_LABELS, MINISTRY_OPTIONS, MOBILE_NUMBER_HELP, MOBILE_NUMBER_PATTERN } from "@/lib/constants";
 import { MAX_NICKNAME_LENGTH } from "@/lib/members";
 import type { VglOption } from "@/lib/vgl";
 
@@ -103,11 +103,22 @@ export function MemberFields({
 
       {showActive && (
         <Section title="Status">
-          <input type="hidden" name="isActiveShown" value="1" />
-          <label className="flex items-center gap-2 text-sm text-stone-700">
-            <input type="checkbox" name="isActive" defaultChecked={d?.isActive ?? true} className="h-4 w-4 accent-stm-brand" />
-            Active — inactive members are hidden from check-in
-          </label>
+          <div className="sm:max-w-xs">
+            <label htmlFor="status" className="block text-sm font-medium text-stone-700 mb-1">
+              Status
+            </label>
+            <select id="status" name="status" defaultValue={d?.status ?? "active"} className={inputCls}>
+              {MEMBER_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {MEMBER_STATUS_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-stone-500">
+            Pending = added by a volunteer at check-in, waiting for your approval — set Active to approve. Not active members
+            are hidden from check-in.
+          </p>
         </Section>
       )}
     </div>

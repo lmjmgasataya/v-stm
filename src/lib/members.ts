@@ -5,6 +5,9 @@ import {
   MINISTRY_OPTIONS,
   MOBILE_NUMBER_HELP,
   MOBILE_NUMBER_REGEX,
+  isMemberStatus,
+  memberStatusValues,
+  type MemberStatus,
 } from "@/lib/constants";
 
 // Shared FormData parsing/validation for adding and editing a service team member.
@@ -30,7 +33,7 @@ export interface MemberInput {
   ministries: string[];
   /** Submitted the Service Team Members Profile (else "Not yet") */
   profileSubmitted: boolean;
-  isActive: boolean;
+  status: MemberStatus;
 }
 
 export const MAX_NICKNAME_LENGTH = 40;
@@ -69,8 +72,8 @@ export function readMemberInput(formData: FormData): MemberInput {
     // One ministry per STM
     ministries: pick(formData, "ministries", MINISTRY_OPTIONS).slice(0, 1),
     profileSubmitted: formData.get("profileSubmitted") === "on",
-    // Only the edit form shows the toggle; adding always creates an active member
-    isActive: formData.has("isActiveShown") ? formData.get("isActive") === "on" : true,
+    // Only the edit form has the status field; an admin adding someone creates an active member
+    status: isMemberStatus(formData.get("status")) ? (formData.get("status") as MemberStatus) : "active",
   };
 }
 
@@ -120,7 +123,7 @@ export function toMemberValues(input: MemberInput) {
     discipleshipJourneyCompleted: input.discipleshipJourneyCompleted.join(",") || null,
     ministries: input.ministries,
     profileSubmitted: input.profileSubmitted,
-    isActive: input.isActive,
+    ...memberStatusValues(input.status),
   };
 }
 

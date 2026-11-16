@@ -1,7 +1,7 @@
 import { and, arrayContains, asc, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { members } from "@/db/schema";
 import { memberScope, type Viewer } from "@/lib/access";
-import { activeMemberCondition, inactiveMemberCondition } from "@/lib/activity";
+import { activeMemberCondition, inactiveMemberCondition, pendingMemberCondition } from "@/lib/activity";
 import type { ActivityRule } from "@/lib/activity-rule";
 import { MINISTRY_OPTIONS, SERVICE_ATTENDING_OPTIONS } from "@/lib/constants";
 import { parseSort, type SortDir } from "@/lib/sort";
@@ -12,7 +12,7 @@ import { MEMBER_SORT_COLUMNS, type MemberSortColumn } from "./sortColumns";
 
 export const PAGE_SIZE = 50;
 
-export type MemberStatus = "active" | "inactive" | "all";
+export type MemberStatus = "active" | "pending" | "inactive" | "all";
 
 export interface MemberListParams {
   q: string;
@@ -44,7 +44,7 @@ export function parseMemberListParams(raw: RawParams | URLSearchParams, viewer: 
     ministry: (MINISTRY_OPTIONS as readonly string[]).includes(ministry) ? ministry : "",
     // Keep the viewer's own order (9AM & 11AM, 2PM & 4PM, …) and only groups they may see
     services: viewer.attending.filter((s) => getAll("service").includes(s)),
-    status: status === "inactive" || status === "all" ? status : "active",
+    status: status === "pending" || status === "inactive" || status === "all" ? status : "active",
     sort,
     dir,
     page: Number.isInteger(page) && page > 1 ? page : 1,
@@ -73,6 +73,7 @@ export function memberListWhere(p: MemberListParams, viewer: Viewer, rule: Activ
   if (p.services.length) conditions.push(inArray(members.serviceAttending, p.services));
   // Active/Inactive follow the activity rule when it's on (Settings), else the roster flag
   if (p.status === "active") conditions.push(activeMemberCondition(rule));
+  if (p.status === "pending") conditions.push(pendingMemberCondition);
   if (p.status === "inactive") conditions.push(inactiveMemberCondition(rule));
   return and(...conditions);
 }

@@ -5,6 +5,7 @@ import { formatDateString } from "@/lib/date";
 import { SortableTh } from "@/components/SortableTh";
 import type { SortDir } from "@/lib/sort";
 import type { MemberSortColumn } from "./sortColumns";
+import { ApproveButton } from "./ApproveButton";
 
 const HEADERS: [MemberSortColumn, string][] = [
   ["lastName", "Last name"],
@@ -57,10 +58,18 @@ export function MembersTable({
             // With the rule on, someone still on the roster can be inactive by not serving lately
             const belowRule = activity !== null && m.isActive && (m.daysServed ?? 0) < activity.minServes;
             return (
-            <tr key={m.id} className={`hover:bg-stone-50/60 ${m.isActive && !belowRule ? "" : "opacity-60"}`}>
+            <tr key={m.id} className={`hover:bg-stone-50/60 ${m.status === "inactive" || belowRule ? "opacity-60" : ""}`}>
               <td className="px-4 py-2.5 font-medium text-stone-900 whitespace-nowrap">
                 {m.lastName}
-                {!m.isActive && (
+                {m.status === "pending" && (
+                  <span
+                    className="ml-2 rounded-full bg-stm-amber/15 px-2 py-0.5 text-xs font-semibold text-stm-amber"
+                    title="Added by a volunteer at check-in — waiting for an admin's approval"
+                  >
+                    Pending approval
+                  </span>
+                )}
+                {m.status === "inactive" && (
                   <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-normal text-stone-500">
                     {activity ? "Off roster" : "Inactive"}
                   </span>
@@ -106,6 +115,11 @@ export function MembersTable({
               )}
               {canEdit && (
                 <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                  {m.status === "pending" && (
+                    <span className="mr-3">
+                      <ApproveButton memberId={m.id} name={`${m.firstName} ${m.lastName}`} />
+                    </span>
+                  )}
                   <Link href={`/members/${m.id}/edit`} className="text-stm-brand hover:underline">
                     Edit
                   </Link>

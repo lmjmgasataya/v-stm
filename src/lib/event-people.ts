@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import { eventCheckIns, eventRegistrations, leaders, members, staff } from "@/db/schema";
 import { MINISTRY_OPTIONS, SERVICE_GROUP_NAMES, groupOfAttending, isServiceGroup, type ServiceGroup } from "@/lib/constants";
+import { checkInEligibleCondition } from "@/lib/activity";
 import type { EventPerson, EventPersonCheckIn, PersonKind } from "@/lib/event-people-shared";
 
 // Everyone who can be checked in to an event: STMs (stm_members), leaders without a serve
@@ -50,7 +51,7 @@ export async function getEventPersonCheckIns(eventId: number): Promise<EventPers
 export async function getEventRoster(eventId: number, checkedInKeys: Set<string>): Promise<EventPerson[]> {
   const idsOf = (kind: PersonKind) =>
     [...checkedInKeys].filter((k) => k.startsWith(`${kind}-`)).map((k) => Number(k.slice(kind.length + 1)));
-  const activeOr = <T extends typeof members | typeof leaders | typeof staff>(table: T, ids: number[]) =>
+  const activeOr = <T extends typeof leaders | typeof staff>(table: T, ids: number[]) =>
     ids.length ? or(eq(table.isActive, true), inArray(table.id, ids)) : eq(table.isActive, true);
 
   const [registered, stmRows, leaderRows, staffRows] = await Promise.all([
@@ -68,7 +69,8 @@ export async function getEventRoster(eventId: number, checkedInKeys: Set<string>
         ministries: members.ministries,
       })
       .from(members)
-      .where(activeOr(members, idsOf("stm")))
+      // Pending STMs (added by a volunteer, not yet approved) can be checked in too
+      .where(idsOf("stm").length ? or(checkInEligibleCondition, inArray(members.id, idsOf("stm"))) : checkInEligibleCondition)
       .orderBy(asc(members.lastName), asc(members.firstName)),
     db.select().from(leaders).where(activeOr(leaders, idsOf("leader"))).orderBy(asc(leaders.lastName), asc(leaders.firstName)),
     db.select().from(staff).where(activeOr(staff, idsOf("staff"))).orderBy(asc(staff.lastName), asc(staff.firstName)),

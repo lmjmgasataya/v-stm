@@ -9,7 +9,8 @@ import { MINISTRY_OPTIONS } from "@/lib/constants";
 import { Chip, matchesMember } from "@/components/checkInParts";
 import { formatTime } from "@/lib/date";
 import { memberDisplayName } from "@/lib/members";
-import { checkIn, undoCheckIn } from "./actions";
+import { checkIn, undoCheckIn, type AddMemberResult } from "./actions";
+import { AddMemberModal } from "./AddMemberModal";
 
 export interface RosterMember {
   id: number;
@@ -21,6 +22,8 @@ export interface RosterMember {
   serviceAttending: string | null;
   vglName: string | null;
   ministries: string[];
+  /** Added by a volunteer, not yet approved by an admin. */
+  pending: boolean;
 }
 
 export interface TodayCheckIn {
@@ -56,8 +59,10 @@ export function CheckInWorkspace({
   groups,
   initialGroup,
   scoped,
+  needsApproval,
   todayLabel,
-  roster,
+  attendingOptions,
+  roster: serverRoster,
   checkIns,
 }: {
   /** Service groups this user can check in to (just their own when scoped). */
@@ -65,7 +70,11 @@ export function CheckInWorkspace({
   initialGroup: string;
   /** Signed in as a service-group user: the roster is already only their services. */
   scoped: boolean;
+  /** Signed in as a volunteer: STMs they add wait for an admin's approval. */
+  needsApproval: boolean;
   todayLabel: string;
+  /** Service-attending values this user may give a new STM (Viewer.attending). */
+  attendingOptions: readonly string[];
   roster: RosterMember[];
   checkIns: TodayCheckIn[];
 }) {
@@ -88,6 +97,13 @@ export function CheckInWorkspace({
   const { showToast } = useToast();
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
+  const [adding, setAdding] = useState(false);
+  // STMs added here (AddMemberModal), until the next server render includes them
+  const [added, setAdded] = useState<RosterMember[]>([]);
+  const roster = useMemo(
+    () => [...serverRoster, ...added.filter((a) => !serverRoster.some((m) => m.id === a.id))],
+    [serverRoster, added]
+  );
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -192,6 +208,20 @@ export function CheckInWorkspace({
         searchRef.current?.focus();
       }
     });
+  }
+
+  function handleAdded(result: Extract<AddMemberResult, { ok: true }>) {
+    const { member } = result;
+    setAdded((a) => [...a, { ...member, middleInitial: "", nickname: null, mobileNumber: "", vglName: null }]);
+    keepResult({ type: "add", checkIns: result.checkedIn.map((c) => ({ memberId: member.id, ...c })) });
+    setAdding(false);
+    showToast(
+      "success",
+      `${member.firstName} ${member.lastName} added and checked in${member.pending ? " — pending an admin's approval" : ""}.`
+    );
+    setQuery("");
+    setMinistry("");
+    searchRef.current?.focus();
   }
 
   function handleUndo(member: RosterMember, service: string) {
@@ -387,6 +417,18 @@ export function CheckInWorkspace({
                 })}
               </ul>
             )}
+            {searching && (
+              <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-3 text-sm text-stone-500">
+                Can&apos;t find them in the list?
+                <button
+                  type="button"
+                  onClick={() => setAdding(true)}
+                  className="rounded-full border border-stm-brand px-4 py-1.5 text-sm font-semibold text-stm-brand transition hover:bg-stm-brand/5"
+                >
+                  + Add STM
+                </button>
+              </p>
+            )}
           </section>
 
           <section>
@@ -404,6 +446,18 @@ export function CheckInWorkspace({
             )}
           </section>
         </>
+      )}
+
+      {adding && (
+        <AddMemberModal
+          services={selected}
+          serviceLabel={selected.map(timeOf).join(" & ")}
+          attendingOptions={attendingOptions}
+          defaultAttending={group.attending}
+          needsApproval={needsApproval}
+          onClose={() => setAdding(false)}
+          onAdded={handleAdded}
+        />
       )}
     </div>
   );
@@ -435,7 +489,12 @@ function MemberRow({
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0">
-        <p className="font-medium text-stone-900 truncate">{memberDisplayName(member)}</p>
+        <p className="font-medium text-stone-900 truncate">
+          {memberDisplayName(member)}
+          {member.pending && (
+            <span className="ml-2 rounded-full bg-stm-amber/15 px-2 py-0.5 text-xs font-semibold text-stm-amber">Pending approval</span>
+          )}
+        </p>
         <p className="text-xs text-stone-500 truncate">{details.join(" · ") || "—"}</p>
         {otherServices && (
           <p className="text-xs text-stm-amber truncate">Also checked in today: {otherServices.join(", ")}</p>

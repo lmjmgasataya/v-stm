@@ -42,12 +42,17 @@ export const members = pgTable(
     ministries: text("ministries").array().notNull().default(sql`'{}'::text[]`),
     // "Submitted the Service Team Members Profile?" — Submitted (true) or Not yet (false)
     profileSubmitted: boolean("profile_submitted").notNull().default(false),
+    // MEMBER_STATUSES: "active" | "pending" (added by a volunteer, awaiting an admin's approval)
+    // | "inactive". Write it through memberStatusValues() so isActive stays in step.
+    status: text("status").notNull().default("active"),
+    // Always status = 'active' (enforced by the check below) — kept because most queries filter on it
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("stm_members_person_uq").on(sql`lower(${t.lastName})`, sql`lower(${t.firstName})`, t.mobileNumber),
+    check("stm_members_status_active", sql`${t.isActive} = (${t.status} = 'active')`),
   ]
 );
 

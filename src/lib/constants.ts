@@ -59,6 +59,25 @@ export function groupOfAttending(attending: string | null | undefined): ServiceG
 
 export const ROLE_OPTIONS = ["admin", "volunteer"] as const;
 
+// stm_members.status. "pending" = added by a volunteer and waiting for an admin to approve:
+// they can be checked in, but don't count as active members until approved.
+export const MEMBER_STATUSES = ["active", "pending", "inactive"] as const;
+export type MemberStatus = (typeof MEMBER_STATUSES)[number];
+export const MEMBER_STATUS_LABELS: Record<MemberStatus, string> = {
+  active: "Active",
+  pending: "Pending approval",
+  inactive: "Not active",
+};
+
+export function isMemberStatus(value: unknown): value is MemberStatus {
+  return (MEMBER_STATUSES as readonly unknown[]).includes(value);
+}
+
+/** Column values for a status — `isActive` always mirrors it. */
+export function memberStatusValues(status: MemberStatus) {
+  return { status, isActive: status === "active" };
+}
+
 export const GENDER_OPTIONS = ["Male", "Female"] as const;
 
 // Same steps (and order) as v-1's DISCIPLESHIP_JOURNEY_STEPS.

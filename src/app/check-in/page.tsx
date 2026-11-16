@@ -1,4 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
+import { checkInEligibleCondition } from "@/lib/activity";
 import { db } from "@/db";
 import { checkIns, members } from "@/db/schema";
 import { checkInScope, memberScope, requireViewer } from "@/lib/access";
@@ -33,9 +34,10 @@ export default async function CheckInPage({
         serviceAttending: members.serviceAttending,
         vglName: members.vglName,
         ministries: members.ministries,
+        status: members.status,
       })
       .from(members)
-      .where(and(eq(members.isActive, true), memberScope(viewer)))
+      .where(and(checkInEligibleCondition, memberScope(viewer)))
       .orderBy(asc(members.lastName), asc(members.firstName)),
     db
       .select({ memberId: checkIns.memberId, service: checkIns.service, checkedInAt: checkIns.checkedInAt })
@@ -51,7 +53,9 @@ export default async function CheckInPage({
       initialGroup={initialGroup}
       scoped={!!viewer.serviceGroup}
       todayLabel={formatDateString(today)}
-      roster={roster satisfies RosterMember[]}
+      needsApproval={!viewer.canManageMembers}
+      attendingOptions={viewer.attending}
+      roster={roster.map(({ status, ...m }) => ({ ...m, pending: status === "pending" })) satisfies RosterMember[]}
       checkIns={todays.map((c) => ({ ...c, checkedInAt: c.checkedInAt.toISOString() })) satisfies TodayCheckIn[]}
     />
   );

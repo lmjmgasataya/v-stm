@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { eventCheckIns, eventRegistrations, events, leaders, members, staff } from "@/db/schema";
 import { PERSON_KINDS, parsePersonKey, type EventPerson, type EventPersonCheckIn, type PersonKind } from "@/lib/event-people-shared";
-import { MINISTRY_OPTIONS, SERVICE_ATTENDING_OPTIONS, SERVICE_GROUP_NAMES } from "@/lib/constants";
+import { MINISTRY_OPTIONS, SERVICE_ATTENDING_OPTIONS, SERVICE_GROUP_NAMES, memberStatusValues } from "@/lib/constants";
+import { checkInEligibleCondition } from "@/lib/activity";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { requireMemberManager, requireSuperAdmin, requireViewer } from "@/lib/access";
 import { isDateString } from "@/lib/date";
@@ -119,7 +120,8 @@ async function isActivePerson(kind: PersonKind, id: number) {
   const [row] = await db
     .select({ id: table.id })
     .from(table)
-    .where(and(eq(table.id, id), eq(table.isActive, true)))
+    // STMs waiting for approval can still be checked in
+    .where(and(eq(table.id, id), kind === "stm" ? checkInEligibleCondition : eq(table.isActive, true)))
     .limit(1);
   return !!row;
 }
@@ -215,7 +217,14 @@ export async function addWalkIn(
   try {
     [member] = await db
       .insert(members)
-      .values({ lastName, firstName, ministries: [input.ministry], serviceAttending: input.serviceAttending })
+      .values({
+        lastName,
+        firstName,
+        ministries: [input.ministry],
+        serviceAttending: input.serviceAttending,
+        // A volunteer's addition waits for an admin's approval (dashboard → pending approval)
+        ...memberStatusValues(viewer.canManageMembers ? "active" : "pending"),
+      })
       .returning({ id: members.id });
   } catch (err) {
     if (isUniqueViolation(err)) return alreadyThere;

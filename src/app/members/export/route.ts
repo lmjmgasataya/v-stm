@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     m.vglName,
     (m.discipleshipJourneyCompleted ?? "").split(",").filter(Boolean).join("; "),
     m.ministries.join("; "),
-    m.active ? "Active" : "Inactive",
+    m.status === "pending" ? "Pending" : m.active ? "Active" : "Inactive",
     m.lastServed,
     manilaDateString(m.createdAt),
     m.profileSubmitted ? "Yes" : "No",

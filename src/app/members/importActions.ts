@@ -70,7 +70,7 @@ export interface ImportSummary {
 
 type MemberInsert = typeof members.$inferInsert;
 /** Columns an import can update (only those with a filled-in, readable cell are set). */
-type MemberChanges = Partial<Omit<MemberInsert, "id" | "createdAt" | "updatedAt" | "isActive">>;
+type MemberChanges = Partial<Omit<MemberInsert, "id" | "createdAt" | "updatedAt" | "isActive" | "status">>;
 
 interface ImportEntry {
   row: ImportPreviewRow;

@@ -3,7 +3,7 @@ import { and, count, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { members } from "@/db/schema";
 import { memberScope, requireViewer } from "@/lib/access";
-import { activeMemberCondition } from "@/lib/activity";
+import { activeMemberCondition, pendingMemberCondition } from "@/lib/activity";
 import { getActivityRule } from "@/lib/settings";
 import { getAttendanceByService } from "@/lib/attendance";
 import { getEventsAfter, getEventsOn } from "@/lib/events";
@@ -17,8 +17,12 @@ export default async function DashboardPage() {
   const activeInScope = and(activeMemberCondition(await getActivityRule()), memberScope(viewer));
 
   const today = manilaDateString();
-  const [[{ active }], byMinistry, todayByService, upcomingEvents] = await Promise.all([
+  const [[{ active }], [{ pending }], byMinistry, todayByService, upcomingEvents] = await Promise.all([
     db.select({ active: count() }).from(members).where(activeInScope),
+    // STMs volunteers added at check-in, waiting for an admin (within the admin's services)
+    viewer.canManageMembers
+      ? db.select({ pending: count() }).from(members).where(and(pendingMemberCondition, memberScope(viewer)))
+      : [{ pending: 0 }],
     db
       .select({ ministry: sql<string>`unnest(${members.ministries})`.as("ministry"), total: count() })
       .from(members)
@@ -54,6 +58,21 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {pending > 0 && (
+        <Link
+          href="/members?status=pending"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-stm-amber/40 bg-stm-amber/10 px-4 py-3 transition hover:border-stm-amber"
+        >
+          <span className="text-sm text-stone-700">
+            <span className="font-bold text-stone-900">
+              {pending} service team member{pending === 1 ? "" : "s"} pending approval
+            </span>
+            <span className="block text-xs text-stone-500">Added by volunteers at check-in — review and approve them.</span>
+          </span>
+          <span className="rounded-full bg-stm-amber px-4 py-1.5 text-sm font-semibold text-white">Review →</span>
+        </Link>
+      )}
 
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
         <StatCard label="Active members" value={active} />

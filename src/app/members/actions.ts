@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { members } from "@/db/schema";
 import { memberScope, requireMemberManager, type Viewer } from "@/lib/access";
 import { isUniqueViolation } from "@/lib/db-errors";
+import { memberStatusValues } from "@/lib/constants";
 import { readMemberInput, toMemberValues, validateMemberInput } from "@/lib/members";
 import { withToast } from "@/lib/toast";
 import { resolveVgl } from "@/lib/vgl";
@@ -73,4 +74,17 @@ export async function deleteMember(memberId: number) {
   await db.delete(members).where(and(eq(members.id, memberId), memberScope(viewer)));
   revalidatePath("/", "layout");
   redirect(withToast("/members", "success", "Service team member deleted."));
+}
+
+/** Approves an STM a volunteer added at check-in (pending → active). */
+export async function approveMember(memberId: number): Promise<{ ok: boolean }> {
+  const viewer = await requireMemberManager();
+
+  const updated = await db
+    .update(members)
+    .set({ ...memberStatusValues("active"), updatedAt: new Date() })
+    .where(and(eq(members.id, memberId), eq(members.status, "pending"), memberScope(viewer)))
+    .returning({ id: members.id });
+  revalidatePath("/", "layout");
+  return { ok: updated.length > 0 };
 }

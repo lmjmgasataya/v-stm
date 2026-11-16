@@ -1,4 +1,4 @@
-import { and, eq, not, sql, type SQL } from "drizzle-orm";
+import { and, eq, ne, not, sql, type SQL } from "drizzle-orm";
 import { members } from "@/db/schema";
 import { manilaDateString } from "@/lib/date";
 import type { ActivityRule } from "@/lib/activity-rule";
@@ -32,6 +32,16 @@ export function activeMemberCondition(rule: ActivityRule): SQL {
   return rule.enabled ? and(onRoster, sql`${daysServedSql(rule)} >= ${rule.minServes}`)! : onRoster;
 }
 
+/** Not active — pending members aren't "inactive", they're waiting for approval. */
 export function inactiveMemberCondition(rule: ActivityRule): SQL {
-  return not(activeMemberCondition(rule));
+  return and(not(activeMemberCondition(rule)), ne(members.status, "pending"))!;
 }
+
+/** Added by a volunteer, waiting for an admin to approve. */
+export const pendingMemberCondition: SQL = eq(members.status, "pending");
+
+/**
+ * Who can be checked in (services and events): everyone on the roster plus pending members —
+ * a volunteer adds someone at the door precisely to check them in.
+ */
+export const checkInEligibleCondition: SQL = ne(members.status, "inactive");

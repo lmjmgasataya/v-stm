@@ -85,8 +85,8 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
           param="status"
           value={p.status === "active" ? "" : p.status}
           label="Active"
-          options={["inactive", "all"]}
-          optionLabels={{ inactive: "Inactive", all: "Active & inactive" }}
+          options={["pending", "inactive", "all"]}
+          optionLabels={{ pending: "Pending approval", inactive: "Inactive", all: "All statuses" }}
         />
       </div>
 

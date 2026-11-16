@@ -64,6 +64,13 @@
       "when": 1794481382811,
       "tag": "0008_usher_to_ushering",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794789779813,
+      "tag": "0009_member_status",
+      "breakpoints": true
     }
   ]
 }
