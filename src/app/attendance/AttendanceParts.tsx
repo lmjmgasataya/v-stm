@@ -84,7 +84,8 @@ const KIND_BADGES: Partial<Record<AttendanceRow["kind"], string>> = { leader: "L
 
 /**
  * Check-ins as a full-width table with sortable headers (`?sort=&dir=`, via SortableTh, so
- * sorting keeps the date and filters). Optional title bar for one event or service.
+ * sorting keeps the date and filters). Optional title bar for one event or service, and an
+ * optional last cell per row (`rowAction`, e.g. a remove button).
  */
 export function AttendanceTable({
   title,
@@ -94,6 +95,7 @@ export function AttendanceTable({
   sort,
   dir,
   columns,
+  rowAction,
 }: {
   title?: string;
   href?: string;
@@ -102,6 +104,7 @@ export function AttendanceTable({
   sort: AttendanceSort;
   dir: SortDir;
   columns: AttendanceSort[];
+  rowAction?: (row: AttendanceRow) => React.ReactNode;
 }) {
   const walkIns = rows.filter((r) => r.isWalkIn).length;
   const td = "px-4 py-2.5";
@@ -134,6 +137,7 @@ export function AttendanceTable({
                 {columns.map((c) => (
                   <SortableTh key={c} column={c} label={ATTENDANCE_COLUMNS[c]} sort={sort} dir={dir} />
                 ))}
+                {rowAction && <th className="w-px" aria-label="Actions" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
@@ -162,11 +166,20 @@ export function AttendanceTable({
                       case "service":
                         return <td key={c} className={`${td} text-stone-600 whitespace-nowrap`}>{r.service}</td>;
                       case "time":
-                        return <td key={c} className={`${td} text-stone-600 whitespace-nowrap tabular-nums`}>{attendanceTime(r)}</td>;
+                        return (
+                          <td
+                            key={c}
+                            className={`${td} whitespace-nowrap tabular-nums ${r.addedLater ? "text-stone-400 italic" : "text-stone-600"}`}
+                            title={r.addedLater ? "Added afterwards from Sunday Attendance" : undefined}
+                          >
+                            {attendanceTime(r)}
+                          </td>
+                        );
                       case "by":
                         return <td key={c} className={`${td} text-stone-600`}>{r.checkedInBy ?? <span className="text-stone-400">—</span>}</td>;
                     }
                   })}
+                  {rowAction && <td className="px-2 py-1.5 text-right">{rowAction(r)}</td>}
                 </tr>
               ))}
             </tbody>

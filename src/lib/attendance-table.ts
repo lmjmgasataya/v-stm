@@ -1,5 +1,5 @@
 import { isKindFilter, KIND_FILTERS, type AttendanceRow } from "@/lib/attendance";
-import { formatTime } from "@/lib/date";
+import { formatShortDate, formatTime, manilaDateString } from "@/lib/date";
 import { memberDisplayName } from "@/lib/members";
 import { parseSort, type SortDir } from "@/lib/sort";
 
@@ -54,4 +54,6 @@ export function prepareRows(rows: AttendanceRow[], filter: string, sort: Attenda
 export const attendanceName = (r: AttendanceRow) =>
   r.lastName ? memberDisplayName(r) : `${r.firstName}${r.nickname ? ` (${r.nickname})` : ""}`;
 
-export const attendanceTime = (r: AttendanceRow) => formatTime(r.checkedInAt);
+/** Check-in time; a check-in added on a later day shows when it was added instead ("Added Nov 17"). */
+export const attendanceTime = (r: AttendanceRow) =>
+  r.addedLater ? `Added ${formatShortDate(manilaDateString(r.checkedInAt))}` : formatTime(r.checkedInAt);

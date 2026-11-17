@@ -1,6 +1,7 @@
 import { and, arrayContains, asc, count, desc, eq, gte, inArray, isNotNull, lte, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns, eventCheckIns, events, leaders, members, staff, users } from "@/db/schema";
+import { manilaDateString } from "@/lib/date";
 import type { PersonKind } from "@/lib/event-people-shared";
 
 // Service queries take `services` — the signed-in user's services (Viewer.services) — so
@@ -32,6 +33,13 @@ export interface AttendanceRow {
   isWalkIn: boolean;
   /** Sunday check-ins: the service (SERVICE_OPTIONS value) */
   service?: string;
+  /** Sunday check-ins: the member's id (for removing the check-in) */
+  memberId?: number;
+  /**
+   * Sunday check-ins recorded on a later day from Sunday Attendance (a missed check-in added
+   * afterwards), so `checkedInAt` is when it was added, not when they arrived.
+   */
+  addedLater?: boolean;
 }
 
 /** One day's check-ins grouped by service, in `services` order (every service listed, even empty). */
@@ -59,7 +67,8 @@ export async function getAttendanceByService(
 
   const byService = new Map<string, AttendanceRow[]>(services.map((s) => [s, []]));
   for (const { service, memberId, ...row } of rows) {
-    byService.get(service)?.push({ ...row, key: `stm-${memberId}`, kind: "stm", isWalkIn: false, service });
+    const addedLater = manilaDateString(row.checkedInAt) !== serviceDate;
+    byService.get(service)?.push({ ...row, key: `stm-${memberId}`, kind: "stm", isWalkIn: false, service, memberId, addedLater });
   }
   return Array.from(byService, ([service, serviceRows]) => ({ service, rows: serviceRows }));
 }

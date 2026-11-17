@@ -1,12 +1,14 @@
 import { requireViewer } from "@/lib/access";
 import { getAttendanceByService, getCheckInCountsByDate, getRecentServiceDates } from "@/lib/attendance";
-import { SUNDAY_SORTS, filterLabel, matchesFilter, parseAttendanceSort, prepareRows } from "@/lib/attendance-table";
+import { SUNDAY_SORTS, attendanceName, filterLabel, matchesFilter, parseAttendanceSort, prepareRows } from "@/lib/attendance-table";
 import { MINISTRY_OPTIONS } from "@/lib/constants";
 import { addMonths, formatDateString, isDateString, isMonthString, manilaDateString } from "@/lib/date";
 import { StatCard } from "@/components/StatCard";
 import { secondaryBtnCls } from "@/components/form";
+import { AddCheckInButton } from "./AddCheckInButton";
 import { AttendanceCalendar } from "./AttendanceCalendar";
 import { AttendanceTable, FilterChips, RecentDates, ServiceCards, attendanceHref, type AttendanceParams } from "./AttendanceParts";
+import { RemoveCheckInButton } from "./RemoveCheckInButton";
 
 /** Sunday service check-ins only — events have their own page (/event-attendance). */
 export default async function AttendancePage({
@@ -50,6 +52,8 @@ export default async function AttendancePage({
   const rows = prepareRows(service ? all.filter((r) => r.service === service) : all, ministry, sort, dir);
   const uniqueMembers = new Set(rows.map((r) => r.key)).size;
   const filterNote = [ministry && filterLabel(ministry), service].filter(Boolean).join(" · ") || undefined;
+  // Admins can fix a day's attendance afterwards: add a missed check-in, remove a wrong one
+  const canEdit = viewer.canManageMembers && date <= today;
 
   return (
     <div className="flex flex-col gap-6">
@@ -84,16 +88,32 @@ export default async function AttendancePage({
           <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">
             Check-ins{filterNote && <span className="normal-case tracking-normal font-normal"> · {filterNote}</span>}
           </h2>
-          <a
-            href={attendanceHref("/attendance/export", current)}
-            download
-            aria-disabled={rows.length === 0}
-            className={`${secondaryBtnCls} ${rows.length === 0 ? "pointer-events-none opacity-50" : ""}`}
-          >
-            Download Excel
-          </a>
+          <div className="flex flex-wrap gap-2">
+            {canEdit && <AddCheckInButton key={`${date}|${service}`} date={date} services={viewer.services} defaultService={service} />}
+            <a
+              href={attendanceHref("/attendance/export", current)}
+              download
+              aria-disabled={rows.length === 0}
+              className={`${secondaryBtnCls} ${rows.length === 0 ? "pointer-events-none opacity-50" : ""}`}
+            >
+              Download Excel
+            </a>
+          </div>
         </div>
-        <AttendanceTable rows={rows} filter={ministry} sort={sort} dir={dir} columns={SUNDAY_SORTS} />
+        <AttendanceTable
+          rows={rows}
+          filter={ministry}
+          sort={sort}
+          dir={dir}
+          columns={SUNDAY_SORTS}
+          rowAction={
+            canEdit
+              ? (r) =>
+                  r.memberId !== undefined &&
+                  r.service && <RemoveCheckInButton memberId={r.memberId} date={date} service={r.service} name={attendanceName(r)} />
+              : undefined
+          }
+        />
       </div>
     </div>
   );
