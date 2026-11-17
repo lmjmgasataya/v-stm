@@ -39,7 +39,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
     .limit(PAGE_SIZE)
     .offset((page - 1) * PAGE_SIZE);
 
-  const filtered = p.q.trim() || p.ministry || p.services.length > 0 || p.status !== "active";
+  const filtered = p.q.trim() || p.ministry || p.services.length > 0 || p.status !== "active" || p.profile;
   const from = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const to = (page - 1) * PAGE_SIZE + rows.length;
 
@@ -87,6 +87,13 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
           label="Active"
           options={["pending", "inactive", "all"]}
           optionLabels={{ pending: "Pending approval", inactive: "Inactive", all: "All statuses" }}
+        />
+        <FilterSelect
+          param="profile"
+          value={p.profile}
+          label="Any profile"
+          options={["submitted", "not"]}
+          optionLabels={{ submitted: "Profile submitted", not: "Profile not yet submitted" }}
         />
       </div>
 
