@@ -12,7 +12,7 @@ import { addManualCheckIn, getManualCheckInMembers, type ManualCheckInMember } f
 
 const MAX_RESULTS = 20;
 
-/** Admins: record a check-in on the selected date that was missed on the day. */
+/** Record a check-in on the selected date that was missed on the day. */
 export function AddCheckInButton({
   date,
   services,

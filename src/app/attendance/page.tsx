@@ -52,8 +52,8 @@ export default async function AttendancePage({
   const rows = prepareRows(service ? all.filter((r) => r.service === service) : all, ministry, sort, dir);
   const uniqueMembers = new Set(rows.map((r) => r.key)).size;
   const filterNote = [ministry && filterLabel(ministry), service].filter(Boolean).join(" · ") || undefined;
-  // Admins can fix a day's attendance afterwards: add a missed check-in, remove a wrong one
-  const canEdit = viewer.canManageMembers && date <= today;
+  // Anyone can fix a day's attendance afterwards (within their services): add a missed check-in, remove a wrong one
+  const canEdit = date <= today;
 
   return (
     <div className="flex flex-col gap-6">

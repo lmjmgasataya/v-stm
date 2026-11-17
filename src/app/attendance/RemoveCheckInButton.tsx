@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useToast } from "@/components/toast/ToastContext";
 import { removeCheckIn } from "./actions";
 
-/** Admins: remove one service check-in from Sunday Attendance (after a confirm). */
+/** Remove one service check-in from Sunday Attendance (after a confirm). */
 export function RemoveCheckInButton({ memberId, date, service, name }: { memberId: number; date: string; service: string; name: string }) {
   const { showToast } = useToast();
   const [pending, startTransition] = useTransition();

@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns, members } from "@/db/schema";
-import { canSeeService, memberScope, requireViewer, type Viewer } from "@/lib/access";
+import { canSeeService, memberScope, requireViewer } from "@/lib/access";
 import { isDateString, manilaDateString } from "@/lib/date";
 
 // Manual corrections on Sunday Attendance: add or remove a service check-in on any date up to
-// today (a missed check-in, someone checked in to the wrong service). Admins only, within
-// their services — volunteers just use Sunday Check-in on the day.
+// today (a missed check-in, someone checked in to the wrong service). Any signed-in user
+// (admins and volunteers), within their own services.
 
 export interface ManualCheckInMember {
   id: number;
@@ -26,21 +26,15 @@ export interface ManualCheckInMember {
 
 type Result = { ok: true; message: string } | { ok: false; error: string };
 
-async function requireEditor(): Promise<Viewer | null> {
-  const viewer = await requireViewer();
-  return viewer.canManageMembers ? viewer : null;
-}
-
 function checkDate(date: string): string | null {
   if (!isDateString(date)) return "Invalid date.";
   if (date > manilaDateString()) return "You can't add check-ins for a future date.";
   return null;
 }
 
-/** Every member in the admin's services (inactive ones too — they may have served back then). */
+/** Every member in the user's services (inactive ones too — they may have served back then). */
 export async function getManualCheckInMembers(): Promise<ManualCheckInMember[]> {
-  const viewer = await requireEditor();
-  if (!viewer) return [];
+  const viewer = await requireViewer();
   return db
     .select({
       id: members.id,
@@ -61,8 +55,7 @@ export async function getManualCheckInMembers(): Promise<ManualCheckInMember[]> 
 
 /** Records a check-in for `memberId` on `date` to each of `services`; existing ones are kept as they are. */
 export async function addManualCheckIn(memberId: number, date: string, services: string[]): Promise<Result> {
-  const viewer = await requireEditor();
-  if (!viewer) return { ok: false, error: "Only admins can change attendance." };
+  const viewer = await requireViewer();
   const dateError = checkDate(date);
   if (dateError) return { ok: false, error: dateError };
   const wanted = [...new Set(services)];
@@ -90,8 +83,7 @@ export async function addManualCheckIn(memberId: number, date: string, services:
 
 /** Removes one service check-in on `date`. */
 export async function removeCheckIn(memberId: number, date: string, service: string): Promise<Result> {
-  const viewer = await requireEditor();
-  if (!viewer) return { ok: false, error: "Only admins can change attendance." };
+  const viewer = await requireViewer();
   if (!isDateString(date)) return { ok: false, error: "Invalid date." };
   if (!canSeeService(viewer, service)) return { ok: false, error: "That service isn't one of yours." };
 
