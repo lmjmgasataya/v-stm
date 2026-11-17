@@ -87,23 +87,7 @@ function eventPersonScope(filter: string | undefined): SQL | undefined {
 
 // ---- Sunday services (Sunday Attendance)
 
-/** Most recent dates with service check-ins (of `ministry`, when given), newest first. */
-export async function getRecentServiceDates(
-  services: readonly string[],
-  ministry?: string,
-  limit = 8
-): Promise<{ date: string; total: number }[]> {
-  return db
-    .select({ date: checkIns.serviceDate, total: count() })
-    .from(checkIns)
-    .innerJoin(members, eq(checkIns.memberId, members.id))
-    .where(and(inArray(checkIns.service, [...services]), ministryScope(ministry)))
-    .groupBy(checkIns.serviceDate)
-    .orderBy(desc(checkIns.serviceDate))
-    .limit(limit);
-}
-
-/** Service check-ins (of `ministry`, when given) per date between two dates, inclusive — for the calendar. */
+/** Service check-ins (of `ministry`, when given) per date between two dates, inclusive — for the date picker. */
 export async function getCheckInCountsByDate(
   from: string,
   to: string,
@@ -145,7 +129,7 @@ export async function getDefaultEventDate(today: string): Promise<string> {
   return next?.date ?? today;
 }
 
-/** Event check-ins matching the filter per date between two dates, inclusive — for the calendar. */
+/** Event check-ins matching the filter per date between two dates, inclusive — for the date picker. */
 export async function getEventCheckInCountsByDate(from: string, to: string, filter?: string): Promise<Map<string, number>> {
   const rows = await db
     .select({ date: events.eventDate, total: count() })

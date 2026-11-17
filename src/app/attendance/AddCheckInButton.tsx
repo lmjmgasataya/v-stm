@@ -1,24 +1,30 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Modal } from "@/components/Modal";
 import { FormError, inputCls, primaryBtnCls, secondaryBtnCls } from "@/components/form";
 import { matchesMember } from "@/components/checkInParts";
 import { useToast } from "@/components/toast/ToastContext";
 import { SERVICE_GROUPS, groupOfAttending } from "@/lib/constants";
-import { formatDateString } from "@/lib/date";
 import { memberDisplayName } from "@/lib/members";
 import { addManualCheckIn, getManualCheckInMembers, type ManualCheckInMember } from "./actions";
 
 const MAX_RESULTS = 20;
 
-/** Record a check-in on the selected date that was missed on the day. */
+/**
+ * Record a check-in that was missed on the day. The date defaults to the one on the page but
+ * can be any day up to today — also how a Sunday with no check-ins at all gets its first one.
+ */
 export function AddCheckInButton({
   date,
+  today,
   services,
   defaultService,
 }: {
+  /** Pre-filled date (the page's selected date). */
   date: string;
+  today: string;
   /** The viewer's services. */
   services: readonly string[];
   /** The page's service filter, if any — pre-ticked. */
@@ -30,23 +36,27 @@ export function AddCheckInButton({
       <button type="button" onClick={() => setOpen(true)} className={secondaryBtnCls}>
         + Add check-in
       </button>
-      {open && <AddCheckInModal date={date} services={services} defaultService={defaultService} onClose={() => setOpen(false)} />}
+      {open && <AddCheckInModal date={date} today={today} services={services} defaultService={defaultService} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
 function AddCheckInModal({
-  date,
+  date: pageDate,
+  today,
   services,
   defaultService,
   onClose,
 }: {
   date: string;
+  today: string;
   services: readonly string[];
   defaultService: string;
   onClose: () => void;
 }) {
   const { showToast } = useToast();
+  const router = useRouter();
+  const [date, setDate] = useState(pageDate);
   const [roster, setRoster] = useState<ManualCheckInMember[] | null>(null);
   const [query, setQuery] = useState("");
   const [member, setMember] = useState<ManualCheckInMember | null>(null);
@@ -84,6 +94,7 @@ function AddCheckInModal({
   }
 
   function save() {
+    if (!date || date > today) return setError("Pick a date up to today.");
     if (!member) return setError("Pick a member.");
     if (ticked.length === 0) return setError("Select at least one service.");
     setError(undefined);
@@ -92,16 +103,35 @@ function AddCheckInModal({
       if (!result.ok) return setError(result.error);
       showToast("success", result.message);
       onClose();
+      // Show the day it was added to (keeping the page's filters)
+      if (date !== pageDate) {
+        const params = new URLSearchParams(window.location.search);
+        params.delete("month");
+        params.set("date", date);
+        router.push(`/attendance?${params.toString()}`, { scroll: false });
+      }
     });
   }
 
   return (
     <Modal title="Add check-in" onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <p className="text-sm text-stone-500">
-          For someone who served on <span className="font-medium text-stone-700">{formatDateString(date)}</span> but wasn&apos;t checked
-          in.
-        </p>
+        <p className="text-sm text-stone-500">For someone who served but wasn&apos;t checked in on the day.</p>
+
+        <div>
+          <label htmlFor="add-check-in-date" className="block text-sm font-medium text-stone-700 mb-1">
+            Date <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="add-check-in-date"
+            type="date"
+            required
+            value={date}
+            max={today}
+            onChange={(e) => setDate(e.target.value)}
+            className={inputCls}
+          />
+        </div>
 
         {member ? (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-stm-brand/40 bg-stm-brand/5 px-3.5 py-2.5">
