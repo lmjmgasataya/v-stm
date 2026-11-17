@@ -12,16 +12,18 @@ const monthLabel = (month: string) =>
   new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-PH", { timeZone: "UTC", month: "long", year: "numeric" });
 
 /**
- * Sunday Attendance date picker: one month at a time (← / month input / →, never past the
- * current month) and a card per date in it that has check-ins; clicking a card selects it.
- * The page below (`children`) dims while the next month or date loads.
+ * Date picker for Sunday Attendance and Sunday Reports: one month at a time (← / month input /
+ * →, never past the current month) and a card per date in it that has check-ins; clicking a
+ * card selects it (`?date=`). The page below (`children`) dims while the next month or date loads.
  */
 export function AttendanceMonthNav({
   month,
   currentMonth,
   dates,
   selected,
-  keep,
+  keep = "",
+  basePath = "/attendance",
+  unit = ["check-in", "check-ins"],
   children,
 }: {
   /** "YYYY-MM" being shown */
@@ -31,13 +33,17 @@ export function AttendanceMonthNav({
   dates: { date: string; total: number }[];
   selected?: string;
   /** Other query params to carry on every link (filters, sort), e.g. "&ministry=Music". */
-  keep: string;
+  keep?: string;
+  /** Page the links go to */
+  basePath?: string;
+  /** What each card's number counts: [singular, plural] */
+  unit?: readonly [string, string];
   children: ReactNode;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  const go = (query: string) => startTransition(() => router.push(`/attendance?${query}${keep}`, { scroll: false }));
+  const go = (query: string) => startTransition(() => router.push(`${basePath}?${query}${keep}`, { scroll: false }));
   const goMonth = (m: string) => go(`month=${m}`);
 
   return (
@@ -100,7 +106,7 @@ export function AttendanceMonthNav({
                   <span className={`text-xs ${active ? "text-white/80" : "text-stone-500"}`}>{weekday(d.date)}</span>
                   <span className="text-sm font-bold whitespace-nowrap">{formatShortDate(d.date)}</span>
                   <span className={`text-xs whitespace-nowrap ${active ? "text-white/80" : "text-stm-green font-semibold"}`}>
-                    {d.total} check-in{d.total === 1 ? "" : "s"}
+                    {d.total} {unit[d.total === 1 ? 0 : 1]}
                   </span>
                 </button>
               );

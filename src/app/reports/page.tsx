@@ -1,66 +1,61 @@
-import Link from "next/link";
 import { requireViewer } from "@/lib/access";
-
-import { formatDateString, isDateString, manilaDateString } from "@/lib/date";
+import { formatDateString, isDateString, isMonthString, manilaDateString } from "@/lib/date";
 import { NO_MINISTRY, getMinistryServiceTable, getServiceDates } from "@/lib/reports";
 import { secondaryBtnCls } from "@/components/form";
-import { DateSelect } from "./DateSelect";
+import { AttendanceMonthNav } from "@/app/attendance/AttendanceMonthNav";
 import { SundayTrend } from "./SundayTrend";
 
 /** "9AM - Mandurriao" → ["9AM", "Mandurriao"] */
 const splitService = (s: string) => [s.split(" - ")[0], s.split(" - ")[1] ?? ""] as const;
 
-export default async function MinistryServiceReportPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
+export default async function MinistryServiceReportPage({ searchParams }: { searchParams: Promise<{ date?: string; month?: string }> }) {
   const viewer = await requireViewer();
-  const { date: dateParam } = await searchParams;
+  const sp = await searchParams;
 
-  const dates = await getServiceDates(viewer.services);
+  const dates = await getServiceDates(viewer.services); // newest first
   const today = manilaDateString();
-  // Default: the latest day with check-ins (usually last Sunday), not today's empty one
-  const date = isDateString(dateParam) ? dateParam : (dates.find((d) => d.date <= today)?.date ?? today);
-  const table = await getMinistryServiceTable(date, viewer.services);
+  const currentMonth = today.slice(0, 7);
+  const requested = isDateString(sp.date) ? sp.date : undefined;
+  // ?month= while browsing months; else the requested date's month; else this month
+  const month = isMonthString(sp.month) ? sp.month : (requested?.slice(0, 7) ?? currentMonth);
+  const monthDates = dates.filter((d) => d.date.startsWith(month)).reverse();
+  // The requested date when it's in this month, else the month's latest day with check-ins
+  const date = requested?.startsWith(month) ? requested : monthDates.at(-1)?.date;
 
-  // Dates are newest first: "previous" is the next entry, "next" the one before
-  const index = dates.findIndex((d) => d.date === date);
-  const older = index === -1 ? dates.find((d) => d.date < date) : dates[index + 1];
-  const newer = index === -1 ? [...dates].reverse().find((d) => d.date > date) : dates[index - 1];
+  return (
+    <AttendanceMonthNav month={month} currentMonth={currentMonth} dates={monthDates} selected={date} basePath="/reports" unit={["STM", "STMs"]}>
+      {date && <DayReport date={date} dates={dates.filter((d) => d.date <= today)} services={viewer.services} />}
+    </AttendanceMonthNav>
+  );
+}
 
+async function DayReport({
+  date,
+  dates,
+  services,
+}: {
+  date: string;
+  /** Every service date up to today, newest first (for the trend) */
+  dates: { date: string; total: number }[];
+  services: readonly string[];
+}) {
+  const table = await getMinistryServiceTable(date, services);
   const max = Math.max(1, ...table.rows.flatMap((r) => r.counts));
-
-  const navCls =
-    "flex h-10 w-10 items-center justify-center rounded-full bg-white text-stone-600 ring-1 ring-stone-200 transition hover:text-stm-brand hover:ring-stm-brand/40";
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center gap-3">
-        {older ? (
-          <Link href={`/reports?date=${older.date}`} replace scroll={false} aria-label="Previous day with check-ins" className={navCls}>
-            ‹
-          </Link>
-        ) : (
-          <span className={`${navCls} opacity-40`} aria-hidden="true">‹</span>
-        )}
-        <DateSelect dates={dates} value={date} />
-        {newer ? (
-          <Link href={`/reports?date=${newer.date}`} replace scroll={false} aria-label="Next day with check-ins" className={navCls}>
-            ›
-          </Link>
-        ) : (
-          <span className={`${navCls} opacity-40`} aria-hidden="true">›</span>
-        )}
-        <div className="ml-auto">
-          <a
-            href={`/reports/export?date=${date}`}
-            download
-            aria-disabled={table.total === 0}
-            className={`${secondaryBtnCls} ${table.total === 0 ? "pointer-events-none opacity-50" : ""}`}
-          >
-            Download Excel
-          </a>
-        </div>
-      </div>
+      <SundayTrend dates={dates} selected={date} />
 
-      <SundayTrend dates={dates.filter((d) => d.date <= today)} selected={date} />
+      <div className="flex justify-end">
+        <a
+          href={`/reports/export?date=${date}`}
+          download
+          aria-disabled={table.total === 0}
+          className={`${secondaryBtnCls} ${table.total === 0 ? "pointer-events-none opacity-50" : ""}`}
+        >
+          Download Excel
+        </a>
+      </div>
 
       <section className="bg-white rounded-2xl border border-stone-200/80 shadow-sm">
         <div className="px-5 pt-5 pb-3">
