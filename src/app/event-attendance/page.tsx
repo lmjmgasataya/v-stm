@@ -3,8 +3,8 @@ import { requireViewer } from "@/lib/access";
 import {
   getDefaultEventDate,
   getEventAttendance,
-  getEventCheckInCountsByDate,
-  getRecentEventDates,
+  getEventDatesBetween,
+  getLastEventMonth,
   isKindFilter,
   KIND_FILTERS,
   type KindFilter,
@@ -14,8 +14,8 @@ import { MINISTRY_OPTIONS } from "@/lib/constants";
 import { addMonths, formatDateString, isDateString, isMonthString, manilaDateString } from "@/lib/date";
 import { StatCard } from "@/components/StatCard";
 import { secondaryBtnCls } from "@/components/form";
-import { AttendanceCalendar } from "@/app/attendance/AttendanceCalendar";
-import { AttendanceTable, FilterChips, RecentDates, attendanceHref, type AttendanceParams } from "@/app/attendance/AttendanceParts";
+import { AttendanceMonthNav } from "@/app/attendance/AttendanceMonthNav";
+import { AttendanceTable, FilterChips, attendanceHref, type AttendanceParams } from "@/app/attendance/AttendanceParts";
 
 const BASE = "/event-attendance";
 
@@ -33,23 +33,71 @@ export default async function EventAttendancePage({
 
   const sp = await searchParams;
   const today = manilaDateString();
-  // Opens on today's events, else the latest past event, else the next one
-  const date = isDateString(sp.date) ? sp.date : await getDefaultEventDate(today);
-  const month = isMonthString(sp.month) ? sp.month : date.slice(0, 7);
-  const lastOfMonth = new Date(`${addMonths(month, 1)}-01T00:00:00Z`).getTime() - 24 * 60 * 60 * 1000;
+  const currentMonth = today.slice(0, 7);
+  const requested = isDateString(sp.date) ? sp.date : undefined;
+  // ?month= while browsing; else the requested date's month; else the month of the default
+  // date (today's events, else the latest past event, else the next one)
+  const defaultDate = isMonthString(sp.month) || requested ? undefined : await getDefaultEventDate(today);
+  const month = isMonthString(sp.month) ? sp.month : (requested ?? defaultDate!).slice(0, 7);
+  const lastOfMonth = new Date(new Date(`${addMonths(month, 1)}-01T00:00:00Z`).getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   // A ministry (STMs), or "leaders" / "staff"
   const filter = (MINISTRY_OPTIONS as readonly string[]).includes(sp.ministry ?? "") || isKindFilter(sp.ministry) ? sp.ministry! : "";
   const { sort, dir } = parseAttendanceSort(sp.sort, sp.dir, EVENT_SORTS);
 
-  const current: AttendanceParams = { date, ministry: filter, sort, dir };
-  const href = (next: Partial<AttendanceParams> & { month?: string }) => attendanceHref(BASE, current, next);
+  // One card per event date in the month (upcoming ones too); events can be scheduled ahead
+  const [monthDates, lastEventMonth] = await Promise.all([getEventDatesBetween(`${month}-01`, lastOfMonth), getLastEventMonth()]);
+  const maxMonth = lastEventMonth && lastEventMonth > currentMonth ? lastEventMonth : currentMonth;
+  // The requested (or default) date when it's in this month; else the month's latest event up
+  // to today; else its first upcoming one
+  const wanted = requested ?? defaultDate;
+  const date = wanted?.startsWith(month)
+    ? wanted
+    : (monthDates.filter((d) => d.date <= today).at(-1) ?? monthDates[0])?.date;
+  if (date && !monthDates.some((d) => d.date === date)) {
+    monthDates.push({ date, total: 0 });
+    monthDates.sort((x, y) => x.date.localeCompare(y.date));
+  }
+
+  const current: AttendanceParams = { date: date ?? today, ministry: filter, sort, dir };
+  const href = (next: Partial<AttendanceParams>) => attendanceHref(BASE, current, next);
   const keep = href({}).replace(/^\/event-attendance\?date=[^&]*/, "");
 
-  const [dayEvents, recentDates, calendarCounts] = await Promise.all([
-    getEventAttendance(date),
-    getRecentEventDates(filter || undefined),
-    getEventCheckInCountsByDate(`${month}-01`, new Date(lastOfMonth).toISOString().slice(0, 10), filter || undefined),
-  ]);
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Event Attendance</h1>
+        {date && <p className="text-sm text-stone-500">{formatDateString(date)}</p>}
+      </div>
+
+      <AttendanceMonthNav
+        month={month}
+        currentMonth={currentMonth}
+        maxMonth={maxMonth}
+        dates={monthDates}
+        selected={date}
+        emptyText="No events in"
+        keep={keep}
+        basePath={BASE}
+      >
+        {date && <DayEventAttendance date={date} filter={filter} current={current} href={href} />}
+      </AttendanceMonthNav>
+    </div>
+  );
+}
+
+async function DayEventAttendance({
+  date,
+  filter,
+  current,
+  href,
+}: {
+  date: string;
+  filter: string;
+  current: AttendanceParams;
+  href: (next: Partial<AttendanceParams>) => string;
+}) {
+  const { sort, dir } = current;
+  const dayEvents = await getEventAttendance(date);
 
   const chips = [
     ...MINISTRY_OPTIONS.map((m) => ({ value: m as string, label: m })),
@@ -66,31 +114,14 @@ export default async function EventAttendancePage({
   const single = tables.length === 1;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid gap-6 sm:grid-cols-[1fr_auto] content-start">
-        <div className="sm:col-start-1">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900">Event Attendance</h1>
-          <p className="text-sm text-stone-500">{formatDateString(date)}</p>
-        </div>
-
-        <div className="sm:col-start-2 sm:row-start-1 sm:row-span-2">
-          <AttendanceCalendar month={month} selected={date} today={today} counts={calendarCounts} keep={keep} basePath={BASE} />
-        </div>
-
-        <div className="sm:col-start-1 flex flex-col gap-6 min-w-0">
-          <RecentDates label="Event dates:" dates={recentDates} selected={date} href={(d) => href({ date: d })} />
-
-          <div className={`grid gap-4 grid-cols-2 ${showWalkIns ? "lg:grid-cols-3" : ""}`}>
-            <StatCard label="Check-ins" value={shown.length} hint={filterNote} />
-            <StatCard label="People" value={people} hint={filterNote ?? "Counted once across events"} />
-            {showWalkIns && <StatCard label="Walk-ins" value={walkIns} hint={filterNote ?? "Not pre-registered"} />}
-          </div>
-
-          {dayEvents.length > 0 && (
-            <FilterChips items={chips} selected={filter} href={(f) => href({ ministry: f })} />
-          )}
-        </div>
+    <>
+      <div className={`grid gap-4 grid-cols-2 ${showWalkIns ? "lg:grid-cols-3" : ""}`}>
+        <StatCard label="Check-ins" value={shown.length} hint={filterNote} />
+        <StatCard label="People" value={people} hint={filterNote ?? "Counted once across events"} />
+        {showWalkIns && <StatCard label="Walk-ins" value={walkIns} hint={filterNote ?? "Not pre-registered"} />}
       </div>
+
+      {dayEvents.length > 0 && <FilterChips items={chips} selected={filter} href={(f) => href({ ministry: f })} />}
 
       {dayEvents.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center text-sm text-stone-500">
@@ -135,6 +166,6 @@ export default async function EventAttendancePage({
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }

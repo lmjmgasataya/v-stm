@@ -6,39 +6,10 @@ import { SortableTh } from "@/components/SortableTh";
 
 // Shared by Sunday Attendance (/attendance) and Event Attendance (/event-attendance).
 
-const pillCls = (active: boolean) =>
-  `rounded-full px-3 py-1 text-xs font-semibold transition ${
-    active ? "bg-stm-brand text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:ring-stm-brand/40 hover:text-stm-brand"
-  }`;
-
 const chipCls = (active: boolean) =>
   `rounded-lg border px-3 py-1.5 text-sm transition ${
     active ? "border-stm-brand bg-stm-brand text-white" : "border-stone-200 bg-white hover:border-stm-brand/40"
   }`;
-
-export function RecentDates({
-  dates,
-  selected,
-  href,
-  label = "Recent:",
-}: {
-  dates: { date: string; total: number }[];
-  selected: string;
-  href: (date: string) => string;
-  label?: string;
-}) {
-  if (dates.length === 0) return null;
-  return (
-    <div className="flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-stone-500">{label}</span>
-      {dates.map((d) => (
-        <Link key={d.date} href={href(d.date)} className={pillCls(d.date === selected)}>
-          {d.date} · {d.total}
-        </Link>
-      ))}
-    </div>
-  );
-}
 
 /** Filter chips. Clicking the selected chip again clears the filter. */
 export function FilterChips({

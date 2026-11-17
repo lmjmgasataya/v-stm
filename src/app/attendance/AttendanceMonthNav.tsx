@@ -12,15 +12,18 @@ const monthLabel = (month: string) =>
   new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-PH", { timeZone: "UTC", month: "long", year: "numeric" });
 
 /**
- * Date picker for Sunday Attendance and Sunday Reports: one month at a time (← / month input /
- * →, never past the current month) and a card per date in it that has check-ins; clicking a
- * card selects it (`?date=`). The page below (`children`) dims while the next month or date loads.
+ * Date picker for Sunday Attendance, Sunday Reports and Event Attendance: one month at a time
+ * (← / month input / →, never past `maxMonth`) and a card per date in it (dates with check-ins,
+ * or event dates); clicking a card selects it (`?date=`). The page below (`children`) dims while
+ * the next month or date loads.
  */
 export function AttendanceMonthNav({
   month,
   currentMonth,
+  maxMonth = currentMonth,
   dates,
   selected,
+  emptyText = "No check-ins recorded in",
   keep = "",
   basePath = "/attendance",
   unit = ["check-in", "check-ins"],
@@ -29,9 +32,13 @@ export function AttendanceMonthNav({
   /** "YYYY-MM" being shown */
   month: string;
   currentMonth: string;
-  /** Dates in `month` with check-ins (oldest first) and their check-in counts */
+  /** Latest month you can go to (default the current month; events can be ahead of it) */
+  maxMonth?: string;
+  /** Dates in `month` to show as cards (oldest first) and their counts */
   dates: { date: string; total: number }[];
   selected?: string;
+  /** "No check-ins recorded in" → "… November 2026." when the month has no dates */
+  emptyText?: string;
   /** Other query params to carry on every link (filters, sort), e.g. "&ministry=Music". */
   keep?: string;
   /** Page the links go to */
@@ -56,7 +63,7 @@ export function AttendanceMonthNav({
           <input
             type="month"
             value={month}
-            max={currentMonth}
+            max={maxMonth}
             aria-label="Month"
             onChange={(e) => e.target.value && goMonth(e.target.value)}
             className="rounded-full border border-stone-300 bg-white px-3.5 py-1.5 text-sm font-semibold text-stone-700 focus:outline-none focus:ring-4 focus:ring-stm-brand/15 focus:border-stm-brand"
@@ -64,7 +71,7 @@ export function AttendanceMonthNav({
           <button
             type="button"
             onClick={() => goMonth(addMonths(month, 1))}
-            disabled={month >= currentMonth}
+            disabled={month >= maxMonth}
             className={monthBtnCls}
             aria-label="Next month"
           >
@@ -85,7 +92,7 @@ export function AttendanceMonthNav({
 
         {dates.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-stone-300 px-4 py-6 text-center text-sm text-stone-500">
-            No check-ins recorded in {monthLabel(month)}.
+            {emptyText} {monthLabel(month)}.
           </p>
         ) : (
           <div className="flex gap-2 overflow-x-auto pb-1">
