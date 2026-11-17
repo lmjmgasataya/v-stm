@@ -9,7 +9,7 @@ import {
   KIND_FILTERS,
   type KindFilter,
 } from "@/lib/attendance";
-import { EVENT_SORTS, filterLabel, matchesFilter, parseAttendanceSort, prepareRows } from "@/lib/attendance-table";
+import { EVENT_SORTS, filterLabel, parseAttendanceSort, prepareRows } from "@/lib/attendance-table";
 import { MINISTRY_OPTIONS } from "@/lib/constants";
 import { addMonths, formatDateString, isDateString, isMonthString, manilaDateString } from "@/lib/date";
 import { StatCard } from "@/components/StatCard";
@@ -51,11 +51,9 @@ export default async function EventAttendancePage({
     getEventCheckInCountsByDate(`${month}-01`, new Date(lastOfMonth).toISOString().slice(0, 10), filter || undefined),
   ]);
 
-  const all = dayEvents.flatMap((e) => e.rows);
-  const countOf = (f: string) => new Set(all.filter((r) => matchesFilter(r, f)).map((r) => r.key)).size;
   const chips = [
-    ...MINISTRY_OPTIONS.map((m) => ({ value: m as string, label: m, count: countOf(m) })),
-    ...(Object.keys(KIND_FILTERS) as KindFilter[]).map((k) => ({ value: k as string, label: KIND_FILTERS[k], count: countOf(k) })),
+    ...MINISTRY_OPTIONS.map((m) => ({ value: m as string, label: m })),
+    ...(Object.keys(KIND_FILTERS) as KindFilter[]).map((k) => ({ value: k as string, label: KIND_FILTERS[k] })),
   ];
 
   const tables = dayEvents.map(({ event, rows }) => ({ event, rows: prepareRows(rows, filter, sort, dir) }));
@@ -89,7 +87,7 @@ export default async function EventAttendancePage({
           </div>
 
           {dayEvents.length > 0 && (
-            <FilterChips allCount={new Set(all.map((r) => r.key)).size} items={chips} selected={filter} href={(f) => href({ ministry: f })} />
+            <FilterChips items={chips} selected={filter} href={(f) => href({ ministry: f })} />
           )}
         </div>
       </div>

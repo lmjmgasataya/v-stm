@@ -40,15 +40,13 @@ export function RecentDates({
   );
 }
 
-/** Filter chips that double as counts. Clicking the selected chip again clears the filter. */
+/** Filter chips. Clicking the selected chip again clears the filter. */
 export function FilterChips({
-  allCount,
   items,
   selected,
   href,
 }: {
-  allCount: number;
-  items: { value: string; label: React.ReactNode; count: number }[];
+  items: { value: string; label: React.ReactNode }[];
   selected: string;
   href: (value: string) => string;
 }) {
@@ -57,9 +55,9 @@ export function FilterChips({
       <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-3">Filter</h2>
       <div className="flex flex-wrap gap-2">
         <Link href={href("")} replace scroll={false} className={chipCls(!selected)} aria-current={!selected || undefined}>
-          All <span className={`font-bold ${selected ? "text-stm-brand" : ""}`}>{allCount}</span>
+          All
         </Link>
-        {items.map(({ value, label, count }) => {
+        {items.map(({ value, label }) => {
           const active = value === selected;
           return (
             <Link
@@ -70,8 +68,7 @@ export function FilterChips({
               aria-current={active || undefined}
               className={chipCls(active)}
             >
-              <span className={active ? "" : "text-stone-600"}>{label}</span>{" "}
-              <span className={`font-bold ${active ? "" : "text-stm-brand"}`}>{count}</span>
+              <span className={active ? "" : "text-stone-600"}>{label}</span>
             </Link>
           );
         })}

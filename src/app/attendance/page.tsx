@@ -87,13 +87,6 @@ async function DayAttendance({
   const services = await getAttendanceByService(date, viewerServices);
 
   const all = services.flatMap((s) => s.rows);
-  // Ministry chips count people over the whole day (every chip keeps its own count while another is selected)
-  const ministryCounts = MINISTRY_OPTIONS.map((m) => ({
-    value: m,
-    label: m,
-    count: new Set(all.filter((r) => matchesFilter(r, m)).map((r) => r.key)).size,
-  }));
-  const allMembers = new Set(all.map((r) => r.key)).size;
   // Service cards follow the ministry filter
   const serviceCounts = services.map((s) => ({ service: s.service, count: s.rows.filter((r) => matchesFilter(r, ministry)).length }));
 
@@ -109,7 +102,7 @@ async function DayAttendance({
         <StatCard label="Members served" value={uniqueMembers} hint={filterNote ?? "Counted once across services"} />
       </div>
 
-      <FilterChips allCount={allMembers} items={ministryCounts} selected={ministry} href={(m) => href({ ministry: m })} />
+      <FilterChips items={MINISTRY_OPTIONS.map((m) => ({ value: m, label: m }))} selected={ministry} href={(m) => href({ ministry: m })} />
       <ServiceCards services={serviceCounts} selected={service} href={(s) => href({ service: s })} />
 
       <div className="flex flex-col gap-3">
